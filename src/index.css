@@ -1,0 +1,97 @@
+:root {
+  --text: #3d3d48;
+  --text-h: #12131a;
+  --muted: #6b6976;
+  --bg: #f4f5f9;
+  --surface: #ffffff;
+  --surface-2: #eceef5;
+  --card: #ffffff;
+  --border: #d9dde8;
+  --input-bg: #ffffff;
+  --accent: #3b5bdb;
+  --accent-2: #5c7cfa;
+  --accent-border: color-mix(in srgb, var(--accent) 45%, var(--border));
+  --accent-ring: color-mix(in srgb, var(--accent) 22%, transparent);
+  --ok: #2b8a3e;
+  --ok-bg: color-mix(in srgb, var(--ok) 12%, var(--surface));
+  --warm: #d9480f;
+  --warm-bg: color-mix(in srgb, var(--warm) 12%, var(--surface));
+  --danger: #c92a2a;
+  --danger-bg: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  --doc-bg: #e7f5ff;
+  --doc-fg: #1864ab;
+  --train-bg: #fff3bf;
+  --train-fg: #e67700;
+  --task-bg: #edf2ff;
+  --task-fg: #4263eb;
+  --shadow-sm:
+    0 1px 2px rgba(18, 24, 40, 0.05),
+    0 1px 1px rgba(18, 24, 40, 0.04);
+  --shadow-lg:
+    0 18px 40px rgba(18, 24, 40, 0.12),
+    0 6px 14px rgba(18, 24, 40, 0.06);
+
+  --sans: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #b4b6c4;
+    --text-h: #eef0f7;
+    --muted: #8b8fa3;
+    --bg: #0f1118;
+    --surface: #161a24;
+    --surface-2: #1c2130;
+    --card: #1a1f2e;
+    --border: #2c3347;
+    --input-bg: #141824;
+    --accent: #748ffc;
+    --accent-2: #91a7ff;
+    --accent-border: color-mix(in srgb, var(--accent) 40%, var(--border));
+    --accent-ring: color-mix(in srgb, var(--accent) 25%, transparent);
+    --ok: #51cf66;
+    --ok-bg: color-mix(in srgb, var(--ok) 14%, var(--card));
+    --warm: #ffa94d;
+    --warm-bg: color-mix(in srgb, var(--warm) 12%, var(--card));
+    --danger: #ff6b6b;
+    --danger-bg: color-mix(in srgb, var(--danger) 14%, var(--card));
+    --doc-bg: #112240;
+    --doc-fg: #74c0fc;
+    --train-bg: #332107;
+    --train-fg: #ffc078;
+    --task-bg: #1e2139;
+    --task-fg: #91a7ff;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 24px 50px rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+strong {
+  color: var(--text-h);
+}
+
+#root {
+  min-height: 100svh;
+}
