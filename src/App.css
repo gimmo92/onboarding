@@ -1073,54 +1073,94 @@
   font-size: 0.85rem;
 }
 
-.document-editor-panel {
-  gap: 1rem;
+.document-preview-dialog {
+  width: min(1100px, calc(100% - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
 }
 
-.document-editor-toolbar {
+.document-preview-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.1fr) minmax(260px, 0.9fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.document-preview-pane {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  justify-content: space-between;
-  padding: 0.75rem;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.document-preview-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.document-preview-frame {
+  width: 100%;
+  min-height: 420px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-2);
 }
 
-.document-editor-toolbar-group {
+.document-preview-fields {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  flex-direction: column;
+  gap: 0.55rem;
 }
 
-.doc-tag-button {
-  background: color-mix(in srgb, var(--accent) 10%, var(--card));
-  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
-}
-
-.document-editor-surface {
-  min-height: 320px;
-  padding: 1rem 1.1rem;
+.document-preview-fields li {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.document-preview-field-label {
+  font-size: 0.82rem;
+  font-weight: 600;
   color: var(--text-h);
-  line-height: 1.55;
-  text-align: left;
 }
 
-.document-editor-surface:focus {
-  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  outline-offset: 2px;
+.document-preview-fields code {
+  font-size: 0.78rem;
+  color: var(--muted);
 }
 
-.document-editor-surface p {
-  margin: 0 0 0.75rem;
+.document-preview-field-value {
+  grid-column: 1 / -1;
+  font-size: 0.9rem;
+  color: var(--text-h);
 }
 
-.document-editor-surface ul,
-.document-editor-surface ol {
-  margin: 0 0 0.75rem;
-  padding-left: 1.25rem;
+.document-preview-text {
+  margin: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-h);
+  font: inherit;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  max-height: 220px;
+  overflow: auto;
+}
+
+@media (max-width: 900px) {
+  .document-preview-layout {
+    grid-template-columns: 1fr;
+  }
 }

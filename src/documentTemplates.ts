@@ -1,4 +1,7 @@
-import mammoth from 'mammoth'
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+
+GlobalWorkerOptions.workerSrc = pdfWorker
 
 export const DOCUMENT_TEMPLATE_TAGS = [
   { key: 'nome', label: 'Nome', token: '{{nome}}' },
@@ -11,26 +14,32 @@ export const DOCUMENT_TEMPLATE_TAGS = [
 
 export type DocumentTemplateTagKey = (typeof DOCUMENT_TEMPLATE_TAGS)[number]['key']
 
+export const DOCUMENT_TEMPLATE_DUMMY_DATA: Record<DocumentTemplateTagKey, string> = {
+  nome: 'Mario',
+  cognome: 'Rossi',
+  data_assunzione: '12/05/2026',
+  ruolo: 'Specialista amministrativo',
+  manager: 'Laura Bianchi',
+  sede: 'Milano',
+}
+
 export type DocumentTemplate = {
   id: string
   name: string
   fileName: string
-  mimeType: string
   storageData: string
-  editorHtml?: string
   extractedText?: string
   tags: DocumentTemplateTagKey[]
   createdAt: string
-  updatedAt?: string
 }
 
 const TAG_TOKEN_BY_KEY = new Map(
   DOCUMENT_TEMPLATE_TAGS.map((tag) => [tag.key, tag.token] as const)
 )
 
-export function isWordDocumentFile(file: File): boolean {
+export function isPdfDocumentFile(file: File): boolean {
   const lower = file.name.toLowerCase()
-  return lower.endsWith('.doc') || lower.endsWith('.docx')
+  return file.type === 'application/pdf' || lower.endsWith('.pdf')
 }
 
 export function detectDocumentTags(text: string): DocumentTemplateTagKey[] {
@@ -45,31 +54,23 @@ export function detectDocumentTags(text: string): DocumentTemplateTagKey[] {
   return DOCUMENT_TEMPLATE_TAGS.map((tag) => tag.key).filter((key) => found.has(key))
 }
 
-export function detectDocumentTagsFromContent(
-  html?: string,
-  text?: string
-): DocumentTemplateTagKey[] {
-  return detectDocumentTags(`${html ?? ''}\n${text ?? ''}`)
-}
+export async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<string> {
+  const pdf = await getDocument({ data: arrayBuffer }).promise
+  const parts: string[] = []
 
-export async function extractDocumentHtml(file: File): Promise<string> {
-  if (file.name.toLowerCase().endsWith('.docx')) {
-    const arrayBuffer = await file.arrayBuffer()
-    const result = await mammoth.convertToHtml({ arrayBuffer })
-    return result.value || '<p></p>'
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber)
+    const content = await page.getTextContent()
+    const pageText = content.items
+      .map((item) => ('str' in item ? item.str : ''))
+      .join(' ')
+      .trim()
+    if (pageText) {
+      parts.push(pageText)
+    }
   }
 
-  return '<p></p>'
-}
-
-export async function extractDocumentText(file: File): Promise<string> {
-  if (file.name.toLowerCase().endsWith('.docx')) {
-    const arrayBuffer = await file.arrayBuffer()
-    const result = await mammoth.extractRawText({ arrayBuffer })
-    return result.value
-  }
-
-  return ''
+  return parts.join('\n')
 }
 
 export function fileToBase64(file: File): Promise<string> {
@@ -93,6 +94,24 @@ export function fileToBase64(file: File): Promise<string> {
   })
 }
 
+export function templatePdfBlobUrl(template: DocumentTemplate): string {
+  const binary = atob(template.storageData)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  const blob = new Blob([bytes], { type: 'application/pdf' })
+  return URL.createObjectURL(blob)
+}
+
+export function applyDummyDataToText(text: string): string {
+  let result = text
+  for (const tag of DOCUMENT_TEMPLATE_TAGS) {
+    result = result.replaceAll(tag.token, DOCUMENT_TEMPLATE_DUMMY_DATA[tag.key])
+  }
+  return result
+}
+
 export function documentTemplateLabel(
   templates: DocumentTemplate[],
   templateId?: string
@@ -102,13 +121,8 @@ export function documentTemplateLabel(
 }
 
 export function formatDocumentTags(tags: DocumentTemplateTagKey[]): string {
-  if (!tags.length) return 'Nessun tag rilevato'
+  if (!tags.length) return 'Nessun campo mappato'
   return tags
     .map((key) => TAG_TOKEN_BY_KEY.get(key) ?? `{{${key}}}`)
     .join(', ')
-}
-
-export function htmlToPlainText(html: string): string {
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  return doc.body.textContent?.replace(/\u00a0/g, ' ').trim() ?? ''
 }

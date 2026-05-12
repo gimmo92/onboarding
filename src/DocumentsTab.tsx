@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import DocumentTemplateEditor from './DocumentTemplateEditor'
+import DocumentTemplatePreview from './DocumentTemplatePreview'
 import {
-  DOCUMENT_TEMPLATE_TAGS,
-  detectDocumentTagsFromContent,
-  extractDocumentHtml,
-  extractDocumentText,
+  detectDocumentTags,
+  extractPdfText,
   fileToBase64,
   formatDocumentTags,
-  isWordDocumentFile,
+  isPdfDocumentFile,
   type DocumentTemplate,
 } from './documentTemplates'
 import {
@@ -22,14 +20,14 @@ function newId(): string {
 export default function DocumentsTab() {
   const [documents, setDocuments] = useState<DocumentTemplate[]>(() => loadDocumentTemplates())
   const [uploadOpen, setUploadOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [previewId, setPreviewId] = useState<string | null>(null)
   const [documentName, setDocumentName] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const editingTemplate = documents.find((document) => document.id === editingId) ?? null
+  const previewTemplate = documents.find((document) => document.id === previewId) ?? null
 
   useEffect(() => {
     saveDocumentTemplates(documents)
@@ -45,7 +43,6 @@ export default function DocumentsTab() {
   }
 
   function openUploadForm() {
-    setEditingId(null)
     resetUploadForm()
     setUploadOpen(true)
   }
@@ -53,15 +50,6 @@ export default function DocumentsTab() {
   function closeUploadForm() {
     setUploadOpen(false)
     resetUploadForm()
-  }
-
-  function openEditor(id: string) {
-    setUploadOpen(false)
-    setEditingId(id)
-  }
-
-  function closeEditor() {
-    setEditingId(null)
   }
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
@@ -72,11 +60,11 @@ export default function DocumentsTab() {
       return
     }
     if (!selectedFile) {
-      setUploadError('Seleziona un file .doc o .docx.')
+      setUploadError('Seleziona un file PDF.')
       return
     }
-    if (!isWordDocumentFile(selectedFile)) {
-      setUploadError('Sono supportati solo file .doc e .docx.')
+    if (!isPdfDocumentFile(selectedFile)) {
+      setUploadError('Sono supportati solo file PDF.')
       return
     }
 
@@ -84,69 +72,36 @@ export default function DocumentsTab() {
     setUploadError(null)
 
     try {
-      const [storageData, editorHtml, extractedText] = await Promise.all([
+      const arrayBuffer = await selectedFile.arrayBuffer()
+      const [storageData, extractedText] = await Promise.all([
         fileToBase64(selectedFile),
-        extractDocumentHtml(selectedFile),
-        extractDocumentText(selectedFile),
+        extractPdfText(arrayBuffer),
       ])
 
       const template: DocumentTemplate = {
         id: newId(),
         name,
         fileName: selectedFile.name,
-        mimeType: selectedFile.type || 'application/octet-stream',
         storageData,
-        editorHtml,
         extractedText: extractedText || undefined,
-        tags: detectDocumentTagsFromContent(editorHtml, extractedText),
+        tags: detectDocumentTags(extractedText),
         createdAt: new Date().toISOString(),
       }
 
       setDocuments((current) => [template, ...current])
       closeUploadForm()
-      setEditingId(template.id)
     } catch {
-      setUploadError('Caricamento non riuscito. Riprova con un altro file.')
+      setUploadError('Caricamento non riuscito. Riprova con un altro PDF.')
     } finally {
       setUploading(false)
     }
   }
 
-  function saveEditedTemplate(
-    id: string,
-    patch: Pick<DocumentTemplate, 'editorHtml' | 'extractedText' | 'tags'>
-  ) {
-    setDocuments((current) =>
-      current.map((document) =>
-        document.id === id
-          ? {
-              ...document,
-              ...patch,
-              updatedAt: new Date().toISOString(),
-            }
-          : document
-      )
-    )
-    closeEditor()
-  }
-
   function removeDocument(id: string) {
     setDocuments((current) => current.filter((document) => document.id !== id))
-    if (editingId === id) {
-      closeEditor()
+    if (previewId === id) {
+      setPreviewId(null)
     }
-  }
-
-  if (editingTemplate) {
-    return (
-      <div className="documents-tab">
-        <DocumentTemplateEditor
-          template={editingTemplate}
-          onSave={(patch) => saveEditedTemplate(editingTemplate.id, patch)}
-          onCancel={closeEditor}
-        />
-      </div>
-    )
   }
 
   return (
@@ -158,9 +113,7 @@ export default function DocumentsTab() {
               <div>
                 <h2>Carica documento</h2>
                 <p className="hcm-hint">
-                  Carica un modello Word (.doc o .docx). Dopo il caricamento potrai aprirlo
-                  nell&apos;editor e inserire i tag{' '}
-                  {DOCUMENT_TEMPLATE_TAGS.map((tag) => tag.token).join(', ')}.
+                  Carica un PDF preparato su PC con i segnaposto già mappati nel file.
                 </p>
               </div>
             </div>
@@ -177,29 +130,17 @@ export default function DocumentsTab() {
             </label>
 
             <label className="wizard-field">
-              File Word
+              File PDF
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept=".pdf,application/pdf"
                 onChange={(event) => {
                   setSelectedFile(event.target.files?.[0] ?? null)
                   setUploadError(null)
                 }}
               />
             </label>
-
-            <div className="document-tag-legend">
-              <p className="document-tag-legend-title">Tag disponibili nel modello</p>
-              <ul className="document-tag-list">
-                {DOCUMENT_TEMPLATE_TAGS.map((tag) => (
-                  <li key={tag.key}>
-                    <code>{tag.token}</code>
-                    <span>{tag.label}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
 
             {uploadError ? <p className="document-upload-error">{uploadError}</p> : null}
 
@@ -220,8 +161,8 @@ export default function DocumentsTab() {
               <div>
                 <h2>Documenti</h2>
                 <p className="hcm-hint">
-                  Carica modelli Word, aprili nell&apos;editor WYSIWYG e inserisci i tag
-                  anagrafici da riutilizzare nei workflow.
+                  Carica PDF già mappati su PC e usa l&apos;anteprima per verificare i campi
+                  con dati di esempio.
                 </p>
               </div>
               <button type="button" className="btn primary" onClick={openUploadForm}>
@@ -234,8 +175,7 @@ export default function DocumentsTab() {
             <h2 className="workflow-list-title">Modelli caricati</h2>
             {documents.length === 0 ? (
               <p className="workflow-empty">
-                Nessun documento caricato. Usa <strong>Carica</strong> per aggiungere un modello
-                .doc o .docx.
+                Nessun documento caricato. Usa <strong>Carica</strong> per aggiungere un PDF.
               </p>
             ) : (
               <div className="table-scroll">
@@ -244,7 +184,7 @@ export default function DocumentsTab() {
                     <tr>
                       <th scope="col">Nome</th>
                       <th scope="col">File</th>
-                      <th scope="col">Tag rilevati</th>
+                      <th scope="col">Campi mappati</th>
                       <th scope="col">Caricato</th>
                       <th scope="col" className="col-action">
                         <span className="sr-only">Azione</span>
@@ -269,9 +209,9 @@ export default function DocumentsTab() {
                             <button
                               type="button"
                               className="btn primary btn-compact"
-                              onClick={() => openEditor(document.id)}
+                              onClick={() => setPreviewId(document.id)}
                             >
-                              Apri
+                              Anteprima
                             </button>
                             <button
                               type="button"
@@ -291,6 +231,13 @@ export default function DocumentsTab() {
           </section>
         </>
       )}
+
+      {previewTemplate ? (
+        <DocumentTemplatePreview
+          template={previewTemplate}
+          onClose={() => setPreviewId(null)}
+        />
+      ) : null}
     </div>
   )
 }
