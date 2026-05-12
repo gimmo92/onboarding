@@ -10,6 +10,7 @@ type DocumentTemplateEditorProps = {
   initialName: string
   initialDocument: JSONContent
   saving?: boolean
+  saveError?: string | null
   onCancel: () => void
   onSave: (payload: { name: string; editorJson: JSONContent }) => void
 }
@@ -18,6 +19,7 @@ export default function DocumentTemplateEditor({
   initialName,
   initialDocument,
   saving = false,
+  saveError = null,
   onCancel,
   onSave,
 }: DocumentTemplateEditorProps) {
@@ -32,6 +34,7 @@ export default function DocumentTemplateEditor({
   const editor = useEditor({
     extensions,
     content: initialDocument,
+    immediatelyRender: false,
     editorProps: {
       attributes: {
         class: 'document-editor-surface',
@@ -48,7 +51,11 @@ export default function DocumentTemplateEditor({
     if (!fieldMenuOpen) return
 
     function handlePointerDown(event: MouseEvent) {
-      if (!fieldMenuRef.current?.contains(event.target as Node)) {
+      const target = event.target
+      if (!(target instanceof globalThis.Node)) {
+        return
+      }
+      if (!fieldMenuRef.current?.contains(target)) {
         setFieldMenuOpen(false)
       }
     }
@@ -75,10 +82,8 @@ export default function DocumentTemplateEditor({
 
   function handleSave() {
     if (!editor) return
-    const trimmedName = name.trim()
-    if (!trimmedName) return
     onSave({
-      name: trimmedName,
+      name: name.trim(),
       editorJson: editor.getJSON(),
     })
   }
@@ -145,6 +150,7 @@ export default function DocumentTemplateEditor({
       </label>
 
       {importError ? <p className="document-upload-error">{importError}</p> : null}
+      {saveError ? <p className="document-upload-error">{saveError}</p> : null}
 
       <div className="document-editor-toolbar">
         <div className="document-editor-toolbar-group">

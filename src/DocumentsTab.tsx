@@ -30,6 +30,7 @@ export default function DocumentsTab() {
   const [editorMode, setEditorMode] = useState<EditorMode>({ kind: 'closed' })
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const previewTemplate = documents.find((document) => document.id === previewId) ?? null
   const editingTemplate =
@@ -57,56 +58,80 @@ export default function DocumentsTab() {
 
   function closeEditor() {
     setEditorMode({ kind: 'closed' })
+    setSaveError(null)
   }
 
   function handleSaveTemplate(payload: { name: string; editorJson: JSONContent }) {
-    setSaving(true)
-    const now = new Date().toISOString()
-    const htmlWithPlaceholders = serializeDocumentToMergeHtml(payload.editorJson)
-    extractMergeFieldKeys(htmlWithPlaceholders)
-
-    if (editorMode.kind === 'create') {
-      const template: DocumentTemplate = {
-        id: newId(),
-        name: payload.name,
-        createdAt: now,
-        updatedAt: now,
-        currentVersion: 1,
-        versions: [
-          {
-            version: 1,
-            createdAt: now,
-            editorJson: payload.editorJson,
-            htmlWithPlaceholders,
-          },
-        ],
-      }
-      setDocuments((current) => upsertDocumentTemplate(current, template))
-      closeEditor()
-      setSaving(false)
+    const trimmedName = payload.name.trim()
+    if (!trimmedName) {
+      setSaveError('Inserisci un nome per il modello.')
       return
     }
 
-    if (editorMode.kind === 'edit' && editingTemplate) {
-      const nextVersion = editingTemplate.currentVersion + 1
-      const version = {
-        version: nextVersion,
-        createdAt: now,
-        editorJson: payload.editorJson,
-        htmlWithPlaceholders,
-      }
-      const updated = appendTemplateVersion(
-        {
-          ...editingTemplate,
-          name: payload.name,
-        },
-        version
-      )
-      setDocuments((current) => upsertDocumentTemplate(current, updated))
-      closeEditor()
-    }
+    setSaving(true)
+    setSaveError(null)
 
-    setSaving(false)
+    try {
+      const htmlWithPlaceholders = serializeDocumentToMergeHtml(payload.editorJson)
+      const now = new Date().toISOString()
+      let nextDocuments: DocumentTemplate[] | null = null
+
+      if (editorMode.kind === 'create') {
+        const template: DocumentTemplate = {
+          id: newId(),
+          name: trimmedName,
+          createdAt: now,
+          updatedAt: now,
+          currentVersion: 1,
+          versions: [
+            {
+              version: 1,
+              createdAt: now,
+              editorJson: payload.editorJson,
+              htmlWithPlaceholders,
+            },
+          ],
+        }
+        nextDocuments = upsertDocumentTemplate(documents, template)
+      } else if (editorMode.kind === 'edit') {
+        const currentTemplate = documents.find((document) => document.id === editorMode.templateId)
+        if (!currentTemplate) {
+          setSaveError('Modello non trovato. Ricarica la pagina e riprova.')
+          return
+        }
+
+        const nextVersion = currentTemplate.currentVersion + 1
+        const version = {
+          version: nextVersion,
+          createdAt: now,
+          editorJson: payload.editorJson,
+          htmlWithPlaceholders,
+        }
+        const updated = appendTemplateVersion(
+          {
+            ...currentTemplate,
+            name: trimmedName,
+          },
+          version
+        )
+        nextDocuments = upsertDocumentTemplate(documents, updated)
+      } else {
+        setSaveError('Sessione editor non valida. Riapri il modello e riprova.')
+        return
+      }
+
+      if (!saveDocumentTemplates(nextDocuments)) {
+        setSaveError('Salvataggio non riuscito. Lo spazio locale del browser potrebbe essere pieno.')
+        return
+      }
+
+      setDocuments(nextDocuments)
+      closeEditor()
+    } catch {
+      setSaveError('Salvataggio non riuscito. Riprova.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function removeDocument(id: string) {
@@ -131,6 +156,7 @@ export default function DocumentsTab() {
           initialName={editingTemplate?.name ?? ''}
           initialDocument={editorInitialDocument}
           saving={saving}
+          saveError={saveError}
           onCancel={closeEditor}
           onSave={handleSaveTemplate}
         />
@@ -149,7 +175,10 @@ export default function DocumentsTab() {
               dipendente.
             </p>
           </div>
-          <button type="button" className="btn primary" onClick={() => setEditorMode({ kind: 'create' })}>
+          <button type="button" className="btn primary" onClick={() => {
+            setSaveError(null)
+            setEditorMode({ kind: 'create' })
+          }}>
             Nuovo modello
           </button>
         </div>
