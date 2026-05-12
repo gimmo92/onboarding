@@ -7,6 +7,7 @@ export type WorkflowBlueprintStep = {
   kind: WorkflowBlueprintStepKind
   title: string
   description: string
+  documentTemplateId?: string
 }
 
 export type WorkflowScope =
@@ -70,6 +71,12 @@ export function blueprintStepKindLabel(kind: WorkflowBlueprintStepKind): string 
     default:
       return 'Attività'
   }
+}
+
+export function blueprintStepRequiresDocumentTemplate(
+  kind: WorkflowBlueprintStepKind
+): boolean {
+  return kind === 'document_sign' || kind === 'document_upload'
 }
 
 export function workflowScopeTypeLabel(type: WorkflowScopeType): string {

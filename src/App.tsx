@@ -11,6 +11,7 @@ import { MOCK_HCM_EMPLOYEES } from './mockHcm'
 import { loadEmployees, saveEmployees } from './storage'
 import { stepsForFlow } from './workflowTemplates'
 import WorkflowTab from './WorkflowTab'
+import DocumentsTab from './DocumentsTab'
 import './App.css'
 
 function newEmployeeId(): string {
@@ -71,7 +72,7 @@ function progressOf(emp: Employee): { done: number; total: number } {
   return { done, total }
 }
 
-type WorkspaceTab = 'da_completare' | 'gestione' | 'workflow'
+type WorkspaceTab = 'da_completare' | 'workflow' | 'documenti'
 
 export default function App() {
   const [employees, setEmployees] = useState<Employee[]>(() => loadEmployees())
@@ -94,12 +95,6 @@ export default function App() {
   useEffect(() => {
     saveEmployees(employees)
   }, [employees])
-
-  useEffect(() => {
-    if (employees.length && !selectedId && !previewHcm) {
-      setSelectedId(employees[0].id)
-    }
-  }, [employees, selectedId, previewHcm])
 
   useEffect(() => {
     const d = dialogRef.current
@@ -168,7 +163,7 @@ export default function App() {
     setEmployees((prev) => [emp, ...prev])
     setSelectedId(emp.id)
     setPreviewHcm(null)
-    setWorkspaceTab('gestione')
+    setWorkspaceTab('da_completare')
     setStartContext(null)
   }
 
@@ -203,13 +198,35 @@ export default function App() {
   function openEmployeeFlow(employeeId: string) {
     setPreviewHcm(null)
     setSelectedId(employeeId)
-    setWorkspaceTab('gestione')
+    setWorkspaceTab('da_completare')
   }
 
   function openHcmProfile(hcm: HcmEmployee) {
     setPreviewHcm(hcm)
     setSelectedId(null)
-    setWorkspaceTab('gestione')
+    setWorkspaceTab('da_completare')
+  }
+
+  function closeFlowView() {
+    setSelectedId(null)
+    setPreviewHcm(null)
+  }
+
+  const flowViewOpen =
+    workspaceTab === 'da_completare' && Boolean(selected || previewHcm)
+
+  function showDaCompletareTab() {
+    setWorkspaceTab('da_completare')
+  }
+
+  function showWorkflowTab() {
+    setWorkspaceTab('workflow')
+    closeFlowView()
+  }
+
+  function showDocumentsTab() {
+    setWorkspaceTab('documenti')
+    closeFlowView()
   }
 
   return (
@@ -223,20 +240,9 @@ export default function App() {
             aria-controls="panel-da-completare"
             id="tab-da-completare"
             className={`main-tab${workspaceTab === 'da_completare' ? ' active' : ''}`}
-            onClick={() => setWorkspaceTab('da_completare')}
+            onClick={showDaCompletareTab}
           >
             Da completare
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={workspaceTab === 'gestione'}
-            aria-controls="panel-gestione"
-            id="tab-gestione"
-            className={`main-tab${workspaceTab === 'gestione' ? ' active' : ''}`}
-            onClick={() => setWorkspaceTab('gestione')}
-          >
-            Gestione flussi
           </button>
           <button
             type="button"
@@ -245,149 +251,32 @@ export default function App() {
             aria-controls="panel-workflow"
             id="tab-workflow"
             className={`main-tab${workspaceTab === 'workflow' ? ' active' : ''}`}
-            onClick={() => setWorkspaceTab('workflow')}
+            onClick={showWorkflowTab}
           >
             Workflow
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={workspaceTab === 'documenti'}
+            aria-controls="panel-documenti"
+            id="tab-documenti"
+            className={`main-tab${workspaceTab === 'documenti' ? ' active' : ''}`}
+            onClick={showDocumentsTab}
+          >
+            Documenti
+          </button>
         </nav>
 
+        {workspaceTab === 'da_completare' ? (
         <div
           id="panel-da-completare"
           role="tabpanel"
           aria-labelledby="tab-da-completare"
-          hidden={workspaceTab !== 'da_completare'}
           className="tab-stack"
         >
-          <section className="hcm-panel panel">
-            <div className="hcm-head">
-              <h2>Da avviare onboarding</h2>
-              <p className="hcm-hint">
-                Dipendenti presenti in HCM ancora senza flusso avviato dalla piattaforma. Usa{' '}
-                <strong>Avvia</strong> per iniziare l’onboarding (o un flusso di offboarding dal
-                dialog) oppure <strong>Apri</strong> per vedere il profilo in gestione flussi.
-              </p>
-            </div>
-            <div className="table-scroll">
-              <table className="hcm-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Nome</th>
-                    <th scope="col">Cognome</th>
-                    <th scope="col">Data</th>
-                    <th scope="col">Ruolo</th>
-                    <th scope="col">Team</th>
-                    <th scope="col" className="col-action">
-                      <span className="sr-only">Azione</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingHcm.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="table-empty">
-                        Nessun dipendente da avviare in onboarding.
-                      </td>
-                    </tr>
-                  ) : (
-                    pendingHcm.map((h) => (
-                      <tr key={h.id}>
-                        <td>{h.firstName}</td>
-                        <td>{h.lastName}</td>
-                        <td className="nowrap">{formatDateIt(h.referenceDate)}</td>
-                        <td>{h.role}</td>
-                        <td>{h.team}</td>
-                        <td className="col-action">
-                          <div className="row-actions">
-                            <button
-                              type="button"
-                              className="btn primary btn-compact"
-                              onClick={() => setStartContext(h)}
-                            >
-                              Avvia
-                            </button>
-                            <button
-                              type="button"
-                              className="btn ghost btn-compact"
-                              onClick={() => openHcmProfile(h)}
-                            >
-                              Apri
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="panel hcm-panel">
-            <div className="hcm-head">
-              <h2>Onboarding da completare</h2>
-              <p className="hcm-hint">
-                Flussi onboarding già avviati con almeno un’attività ancora aperta. Nella colonna{' '}
-                <strong>Attività</strong> vedi completate sul totale.
-              </p>
-            </div>
-            <div className="table-scroll">
-              <table className="hcm-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Nome</th>
-                    <th scope="col">Cognome</th>
-                    <th scope="col">Ruolo</th>
-                    <th scope="col">Team</th>
-                    <th scope="col">Attività</th>
-                    <th scope="col" className="col-action">
-                      <span className="sr-only">Azione</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {onboardingIncomplete.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="table-empty">
-                        Nessun onboarding in corso da completare.
-                      </td>
-                    </tr>
-                  ) : (
-                    onboardingIncomplete.map((emp) => {
-                      const { done, total } = progressOf(emp)
-                      return (
-                        <tr key={emp.id}>
-                          <td>{emp.firstName}</td>
-                          <td>{emp.lastName}</td>
-                          <td>{emp.role ?? '—'}</td>
-                          <td>{emp.department}</td>
-                          <td className="nowrap col-progress">{done}&nbsp;/&nbsp;{total}</td>
-                          <td className="col-action">
-                            <button
-                              type="button"
-                              className="btn primary btn-compact"
-                              onClick={() => openEmployeeFlow(emp.id)}
-                            >
-                              Apri
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-
-        <div
-          id="panel-gestione"
-          role="tabpanel"
-          aria-labelledby="tab-gestione"
-          hidden={workspaceTab !== 'gestione'}
-          className="layout"
-        >
-          <main className="main">
+          {flowViewOpen ? (
+            <main className="main flow-main">
           {selected ? (
             <>
               <div className="detail-head">
@@ -413,6 +302,9 @@ export default function App() {
                   </p>
                 </div>
                 <div className="head-actions">
+                  <button type="button" className="btn ghost" onClick={closeFlowView}>
+                    Torna all&apos;elenco
+                  </button>
                   {(() => {
                     const { done, total } = progressOf(selected)
                     const pct = total ? Math.round((done / total) * 100) : 0
@@ -647,6 +539,9 @@ export default function App() {
                   </p>
                 </div>
                 <div className="head-actions">
+                  <button type="button" className="btn ghost" onClick={closeFlowView}>
+                    Torna all&apos;elenco
+                  </button>
                   <button
                     type="button"
                     className="btn primary"
@@ -663,24 +558,150 @@ export default function App() {
                 </p>
               </section>
             </>
+          ) : null}
+            </main>
           ) : (
-            <div className="empty-main">
-              <p>
-                Torna alla tab <strong>Da completare</strong> per avviare o aprire un onboarding.
-              </p>
-            </div>
-          )}
-          </main>
-        </div>
+            <>
+              <section className="hcm-panel panel">
+                <div className="hcm-head">
+                  <h2>Da avviare onboarding</h2>
+                  <p className="hcm-hint">
+                    Dipendenti presenti in HCM ancora senza flusso avviato dalla piattaforma. Usa{' '}
+                    <strong>Avvia</strong> per iniziare l’onboarding (o un flusso di offboarding dal
+                    dialog) oppure <strong>Apri</strong> per vedere il profilo e gestire il flusso.
+                  </p>
+                </div>
+                <div className="table-scroll">
+                  <table className="hcm-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Nome</th>
+                        <th scope="col">Cognome</th>
+                        <th scope="col">Data</th>
+                        <th scope="col">Ruolo</th>
+                        <th scope="col">Team</th>
+                        <th scope="col" className="col-action">
+                          <span className="sr-only">Azione</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingHcm.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="table-empty">
+                            Nessun dipendente da avviare in onboarding.
+                          </td>
+                        </tr>
+                      ) : (
+                        pendingHcm.map((h) => (
+                          <tr key={h.id}>
+                            <td>{h.firstName}</td>
+                            <td>{h.lastName}</td>
+                            <td className="nowrap">{formatDateIt(h.referenceDate)}</td>
+                            <td>{h.role}</td>
+                            <td>{h.team}</td>
+                            <td className="col-action">
+                              <div className="row-actions">
+                                <button
+                                  type="button"
+                                  className="btn primary btn-compact"
+                                  onClick={() => setStartContext(h)}
+                                >
+                                  Avvia
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn ghost btn-compact"
+                                  onClick={() => openHcmProfile(h)}
+                                >
+                                  Apri
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
 
+              <section className="panel hcm-panel">
+                <div className="hcm-head">
+                  <h2>Onboarding da completare</h2>
+                  <p className="hcm-hint">
+                    Flussi onboarding già avviati con almeno un’attività ancora aperta. Nella colonna{' '}
+                    <strong>Attività</strong> vedi completate sul totale.
+                  </p>
+                </div>
+                <div className="table-scroll">
+                  <table className="hcm-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Nome</th>
+                        <th scope="col">Cognome</th>
+                        <th scope="col">Ruolo</th>
+                        <th scope="col">Team</th>
+                        <th scope="col">Attività</th>
+                        <th scope="col" className="col-action">
+                          <span className="sr-only">Azione</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {onboardingIncomplete.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="table-empty">
+                            Nessun onboarding in corso da completare.
+                          </td>
+                        </tr>
+                      ) : (
+                        onboardingIncomplete.map((emp) => {
+                          const { done, total } = progressOf(emp)
+                          return (
+                            <tr key={emp.id}>
+                              <td>{emp.firstName}</td>
+                              <td>{emp.lastName}</td>
+                              <td>{emp.role ?? '—'}</td>
+                              <td>{emp.department}</td>
+                              <td className="nowrap col-progress">{done}&nbsp;/&nbsp;{total}</td>
+                              <td className="col-action">
+                                <button
+                                  type="button"
+                                  className="btn primary btn-compact"
+                                  onClick={() => openEmployeeFlow(emp.id)}
+                                >
+                                  Apri
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+        ) : workspaceTab === 'workflow' ? (
         <div
           id="panel-workflow"
           role="tabpanel"
           aria-labelledby="tab-workflow"
-          hidden={workspaceTab !== 'workflow'}
         >
           <WorkflowTab />
         </div>
+        ) : (
+        <div
+          id="panel-documenti"
+          role="tabpanel"
+          aria-labelledby="tab-documenti"
+        >
+          <DocumentsTab />
+        </div>
+        )}
       </div>
 
       <dialog

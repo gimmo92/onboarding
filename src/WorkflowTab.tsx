@@ -9,6 +9,8 @@ import {
   loadWorkflowDefinitions,
   saveWorkflowDefinitions,
 } from './workflowTemplateStorage'
+import { loadDocumentTemplates } from './documentTemplateStorage'
+import { documentTemplateLabel } from './documentTemplates'
 import type {
   WorkflowBlueprintStep,
   WorkflowBlueprintStepKind,
@@ -19,6 +21,7 @@ import type {
 import {
   WORKFLOW_SCOPE_OPTIONS,
   blueprintStepKindLabel,
+  blueprintStepRequiresDocumentTemplate,
   summarizeWorkflowScope,
   workflowScopeTypeLabel,
 } from './workflowBuilder'
@@ -31,6 +34,7 @@ const EMPTY_DRAFT_STEP = {
   kind: 'document_sign' as WorkflowBlueprintStepKind,
   title: '',
   description: '',
+  documentTemplateId: '',
 }
 
 const SCOPE_LOOKUP = {
@@ -75,10 +79,16 @@ export default function WorkflowTab() {
   const [wizardStep, setWizardStep] = useState<WizardStep>(1)
   const [draft, setDraft] = useState<WizardDraft>(createEmptyDraft)
   const [draftStep, setDraftStep] = useState(EMPTY_DRAFT_STEP)
+  const [documentTemplates, setDocumentTemplates] = useState(() => loadDocumentTemplates())
 
   useEffect(() => {
     saveWorkflowDefinitions(workflows)
   }, [workflows])
+
+  useEffect(() => {
+    if (!wizardOpen) return
+    setDocumentTemplates(loadDocumentTemplates())
+  }, [wizardOpen])
 
   const scopeOptions = useMemo(() => {
     if (!scopeRequiresTargets(draft.scopeType)) return []
@@ -92,7 +102,19 @@ export default function WorkflowTab() {
 
   const canSaveWorkflow =
     draft.steps.length > 0 &&
-    draft.steps.every((step) => step.title.trim().length > 0)
+    draft.steps.every((step) => {
+      if (!step.title.trim()) return false
+      if (blueprintStepRequiresDocumentTemplate(step.kind)) {
+        return Boolean(step.documentTemplateId)
+      }
+      return true
+    })
+
+  const draftStepNeedsDocument = blueprintStepRequiresDocumentTemplate(draftStep.kind)
+
+  const canAddBlueprintStep =
+    draftStep.title.trim().length > 0 &&
+    (!draftStepNeedsDocument || Boolean(draftStep.documentTemplateId))
 
   function openWizard() {
     setDraft(createEmptyDraft())
@@ -108,15 +130,6 @@ export default function WorkflowTab() {
     setDraftStep(EMPTY_DRAFT_STEP)
   }
 
-  function toggleTarget(id: string) {
-    setDraft((current) => ({
-      ...current,
-      targetIds: current.targetIds.includes(id)
-        ? current.targetIds.filter((targetId) => targetId !== id)
-        : [...current.targetIds, id],
-    }))
-  }
-
   function changeScopeType(type: WorkflowScopeType) {
     setDraft((current) => ({
       ...current,
@@ -125,9 +138,17 @@ export default function WorkflowTab() {
     }))
   }
 
+  function changeTargetId(targetId: string) {
+    setDraft((current) => ({
+      ...current,
+      targetIds: targetId ? [targetId] : [],
+    }))
+  }
+
   function addBlueprintStep() {
+    if (!canAddBlueprintStep) return
+
     const title = draftStep.title.trim()
-    if (!title) return
 
     setDraft((current) => ({
       ...current,
@@ -138,6 +159,9 @@ export default function WorkflowTab() {
           kind: draftStep.kind,
           title,
           description: draftStep.description.trim(),
+          documentTemplateId: draftStepNeedsDocument
+            ? draftStep.documentTemplateId
+            : undefined,
         },
       ],
     }))
@@ -168,23 +192,8 @@ export default function WorkflowTab() {
 
   return (
     <div className="workflow-tab">
-      <section className="panel workflow-panel">
-        <div className="workflow-head">
-          <div>
-            <h2>Workflow</h2>
-            <p className="hcm-hint">
-              Definisci processi riutilizzabili con ambito organizzativo e sequenza di step
-              operativi.
-            </p>
-          </div>
-          {!wizardOpen && (
-            <button type="button" className="btn primary" onClick={openWizard}>
-              Crea workflow
-            </button>
-          )}
-        </div>
-
-        {wizardOpen ? (
+      {wizardOpen ? (
+        <section className="panel workflow-panel">
           <div className="workflow-wizard">
             <ol className="wizard-steps" aria-label="Passaggi del wizard">
               <li className={wizardStep === 1 ? 'active' : 'done'}>
@@ -211,50 +220,38 @@ export default function WorkflowTab() {
                   />
                 </label>
 
-                <fieldset className="scope-fieldset">
-                  <legend>Ambito di assegnazione</legend>
-                  <div className="scope-grid">
+                <label className="wizard-field">
+                  Ambito
+                  <select
+                    value={draft.scopeType}
+                    onChange={(event) =>
+                      changeScopeType(event.target.value as WorkflowScopeType)
+                    }
+                  >
                     {WORKFLOW_SCOPE_OPTIONS.map((option) => (
-                      <label
-                        key={option.type}
-                        className={`scope-card${draft.scopeType === option.type ? ' selected' : ''}`}
-                      >
-                        <input
-                          type="radio"
-                          name="workflowScope"
-                          checked={draft.scopeType === option.type}
-                          onChange={() => changeScopeType(option.type)}
-                        />
-                        <span className="scope-card-title">{option.label}</span>
-                        <span className="scope-card-hint">{option.hint}</span>
-                      </label>
+                      <option key={option.type} value={option.type}>
+                        {option.label}
+                      </option>
                     ))}
-                  </div>
-                </fieldset>
+                  </select>
+                </label>
 
                 {scopeRequiresTargets(draft.scopeType) ? (
-                  <div className="scope-targets">
-                    <p className="scope-targets-title">
-                      Seleziona {workflowScopeTypeLabel(draft.scopeType).toLowerCase()}
-                    </p>
-                    <div className="scope-target-list">
+                  <label className="wizard-field">
+                    {workflowScopeTypeLabel(draft.scopeType)}
+                    <select
+                      value={draft.targetIds[0] ?? ''}
+                      onChange={(event) => changeTargetId(event.target.value)}
+                    >
+                      <option value="">Seleziona un valore</option>
                       {scopeOptions.map((option) => (
-                        <label key={option.id} className="scope-target">
-                          <input
-                            type="checkbox"
-                            checked={draft.targetIds.includes(option.id)}
-                            onChange={() => toggleTarget(option.id)}
-                          />
-                          <span>{option.label}</span>
-                        </label>
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
                       ))}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="scope-all-hint">
-                    Il workflow sarà assegnato a tutti i dipendenti dell’azienda.
-                  </p>
-                )}
+                    </select>
+                  </label>
+                ) : null}
 
                 <div className="wizard-actions">
                   <button type="button" className="btn ghost" onClick={closeWizard}>
@@ -277,18 +274,49 @@ export default function WorkflowTab() {
                     Tipo step
                     <select
                       value={draftStep.kind}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        const kind = event.target.value as WorkflowBlueprintStepKind
                         setDraftStep((current) => ({
                           ...current,
-                          kind: event.target.value as WorkflowBlueprintStepKind,
+                          kind,
+                          documentTemplateId: blueprintStepRequiresDocumentTemplate(kind)
+                            ? current.documentTemplateId
+                            : '',
                         }))
-                      }
+                      }}
                     >
                       <option value="document_sign">Firma documento</option>
                       <option value="document_upload">Caricamento documenti</option>
                       <option value="activity">Attività</option>
                     </select>
                   </label>
+                  {draftStepNeedsDocument ? (
+                    <label className="wizard-field">
+                      Documento
+                      <select
+                        value={draftStep.documentTemplateId}
+                        onChange={(event) =>
+                          setDraftStep((current) => ({
+                            ...current,
+                            documentTemplateId: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">Seleziona un documento</option>
+                        {documentTemplates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {draftStepNeedsDocument && documentTemplates.length === 0 ? (
+                    <p className="wizard-empty">
+                      Nessun documento disponibile. Carica un modello nella tab{' '}
+                      <strong>Documenti</strong>.
+                    </p>
+                  ) : null}
                   <label className="wizard-field">
                     Titolo step
                     <input
@@ -317,7 +345,7 @@ export default function WorkflowTab() {
                   <button
                     type="button"
                     className="btn"
-                    disabled={!draftStep.title.trim()}
+                    disabled={!canAddBlueprintStep}
                     onClick={addBlueprintStep}
                   >
                     Aggiungi step
@@ -336,6 +364,13 @@ export default function WorkflowTab() {
                           <p className="blueprint-step-kind">
                             {blueprintStepKindLabel(step.kind)}
                           </p>
+                          {step.documentTemplateId ? (
+                            <p className="blueprint-step-doc">
+                              Documento:{' '}
+                              {documentTemplateLabel(documentTemplates, step.documentTemplateId) ??
+                                'Modello non disponibile'}
+                            </p>
+                          ) : null}
                           {step.description ? (
                             <p className="blueprint-step-desc">{step.description}</p>
                           ) : null}
@@ -372,51 +407,74 @@ export default function WorkflowTab() {
               </div>
             )}
           </div>
-        ) : workflows.length === 0 ? (
-          <p className="workflow-empty">
-            Nessun workflow configurato. Usa <strong>Crea workflow</strong> per avviare il wizard.
-          </p>
-        ) : (
-          <div className="table-scroll">
-            <table className="hcm-table">
-              <thead>
-                <tr>
-                  <th scope="col">Nome</th>
-                  <th scope="col">Ambito</th>
-                  <th scope="col">Step</th>
-                  <th scope="col">Creato</th>
-                </tr>
-              </thead>
-              <tbody>
-                {workflows.map((workflow) => (
-                  <tr key={workflow.id}>
-                    <td>{workflow.name}</td>
-                    <td>
-                      {workflowScopeTypeLabel(workflow.scope.type)}
-                      {workflow.scope.type !== 'azienda' ? (
-                        <>
-                          <span className="workflow-scope-sep">·</span>
-                          <span className="workflow-scope-detail">
-                            {summarizeWorkflowScope(workflow.scope, SCOPE_LOOKUP)}
-                          </span>
-                        </>
-                      ) : null}
-                    </td>
-                    <td className="nowrap">{workflow.steps.length}</td>
-                    <td className="nowrap">
-                      {new Date(workflow.createdAt).toLocaleDateString('it-IT', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+        </section>
+      ) : (
+        <>
+          <section className="panel workflow-panel">
+            <div className="workflow-head">
+              <div>
+                <h2>Crea workflow</h2>
+                <p className="hcm-hint">
+                  Definisci un nuovo processo con ambito organizzativo e sequenza di step
+                  operativi.
+                </p>
+              </div>
+              <button type="button" className="btn primary" onClick={openWizard}>
+                Crea workflow
+              </button>
+            </div>
+          </section>
+
+          <section className="panel workflow-panel">
+            <h2 className="workflow-list-title">Workflow configurati</h2>
+            {workflows.length === 0 ? (
+              <p className="workflow-empty">
+                Nessun workflow configurato. Usa <strong>Crea workflow</strong> per avviare il
+                wizard.
+              </p>
+            ) : (
+              <div className="table-scroll">
+                <table className="hcm-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Nome</th>
+                      <th scope="col">Ambito</th>
+                      <th scope="col">Step</th>
+                      <th scope="col">Creato</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workflows.map((workflow) => (
+                      <tr key={workflow.id}>
+                        <td>{workflow.name}</td>
+                        <td>
+                          {workflowScopeTypeLabel(workflow.scope.type)}
+                          {workflow.scope.type !== 'azienda' ? (
+                            <>
+                              <span className="workflow-scope-sep">·</span>
+                              <span className="workflow-scope-detail">
+                                {summarizeWorkflowScope(workflow.scope, SCOPE_LOOKUP)}
+                              </span>
+                            </>
+                          ) : null}
+                        </td>
+                        <td className="nowrap">{workflow.steps.length}</td>
+                        <td className="nowrap">
+                          {new Date(workflow.createdAt).toLocaleDateString('it-IT', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </div>
   )
 }
