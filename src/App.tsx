@@ -187,20 +187,6 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="top">
-        <div className="brand">
-          <span className="logo" aria-hidden>
-            ◈
-          </span>
-          <div>
-            <h1>Onboarding &amp; Offboarding</h1>
-            <p className="subtitle">
-              Integrato nell’HCM: avvio flussi da anagrafica con firma documenti e formazione
-            </p>
-          </div>
-        </div>
-      </header>
-
       <div className="workspace">
         <section className="hcm-panel panel">
           <div className="hcm-head">
