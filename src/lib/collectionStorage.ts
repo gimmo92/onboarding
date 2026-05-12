@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabaseClient'
+import { getSupabaseClient, getSupabaseConfigError, mapSupabaseClientError } from './supabaseClient'
 
 type PayloadRow = {
   id: string
@@ -11,7 +11,10 @@ export type PersistResult = {
 }
 
 function formatSupabaseError(error: { message?: string; code?: string; details?: string }): string {
-  return [error.message, error.code, error.details].filter(Boolean).join(' · ')
+  return (
+    mapSupabaseClientError(error.message) ??
+    [error.message, error.code, error.details].filter(Boolean).join(' · ')
+  )
 }
 
 function readLocalCollection<T>(storageKey: string, isValid: (value: unknown) => value is T): T[] {
@@ -87,6 +90,11 @@ export async function saveCollection<T extends { id: string }>(
 ): Promise<PersistResult> {
   const validItems = items.filter((item) => isValid(item))
   const localSaved = writeLocalCollection(storageKey, validItems)
+  const configError = getSupabaseConfigError()
+  if (configError) {
+    return { ok: false, error: configError }
+  }
+
   const client = getSupabaseClient()
   if (!client) {
     return localSaved ? { ok: true } : { ok: false, error: 'Salvataggio locale non riuscito.' }
