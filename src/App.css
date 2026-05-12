@@ -16,6 +16,58 @@
   gap: 1.25rem;
 }
 
+.main-tabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--border);
+  margin: 0 -0.1rem;
+  padding: 0 0.1rem;
+}
+
+.main-tab {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.55rem 0.95rem;
+  margin-bottom: -1px;
+  border-radius: 10px 10px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.main-tab:hover {
+  color: var(--text-h);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.main-tab.active {
+  color: var(--text-h);
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 -1px 0 0 var(--card);
+}
+
+.tab-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.col-progress {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+}
+
 .hcm-panel {
   margin: 0;
 }
