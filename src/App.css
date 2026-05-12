@@ -18,42 +18,63 @@
 
 .main-tabs {
   display: flex;
-  gap: 0.25rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
   align-items: flex-end;
-  border-bottom: 1px solid var(--border);
-  margin: 0 -0.1rem;
-  padding: 0 0.1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 85%, #ffffff);
+  margin: 0;
+  padding: 0;
 }
 
 .main-tab {
-  font: inherit;
-  font-weight: 600;
-  font-size: 0.9rem;
-  padding: 0.55rem 0.95rem;
-  margin-bottom: -1px;
-  border-radius: 10px 10px 0 0;
-  border: 1px solid transparent;
-  border-bottom: none;
+  font-family: var(--paragraph-font);
+  font-size: 0.875rem;
+  font-weight: 400;
+  padding: 0.85rem 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
-  color: var(--muted);
+  color: var(--paragraph);
   cursor: pointer;
-  transition:
-    background 0.15s,
-    color 0.15s,
-    border-color 0.15s;
+  position: relative;
+  transition: color 0.15s;
+}
+
+.main-tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.main-tab-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 
 .main-tab:hover {
-  color: var(--text-h);
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  color: #2152ff;
+  background: transparent;
 }
 
 .main-tab.active {
-  color: var(--text-h);
-  background: var(--card);
-  border-color: var(--border);
-  box-shadow: 0 -1px 0 0 var(--card);
+  color: #2152ff;
+  font-weight: 600;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.main-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: #2152ff;
 }
 
 .tab-stack,
@@ -83,12 +104,6 @@
   text-transform: none;
   letter-spacing: normal;
   color: var(--text-h);
-}
-
-.hcm-hint {
-  margin: 0;
-  line-height: 1.45;
-  max-width: 70ch;
 }
 
 .table-scroll {
@@ -650,6 +665,7 @@
 
 .btn.primary {
   font-family: var(--paragraph-font);
+  font-size: 0.75rem;
   letter-spacing: -0.025rem;
   text-transform: uppercase;
   background-color: #2152ff;
@@ -1353,4 +1369,155 @@
   .document-preview-layout {
     grid-template-columns: 1fr;
   }
+}
+
+.user-view-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.user-view-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-h);
+}
+
+.user-workflow-card {
+  margin-top: 1rem;
+  padding: 1.1rem 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+}
+
+.user-workflow-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.user-workflow-kicker {
+  margin: 0 0 0.25rem;
+  font-family: var(--paragraph-font);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #2152ff;
+}
+
+.user-workflow-card-head h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+  color: var(--text-h);
+}
+
+.user-workflow-meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-family: var(--paragraph-font);
+  font-size: var(--paragraph-size);
+  color: var(--paragraph);
+}
+
+.user-workflow-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-workflow-progress {
+  min-width: 220px;
+}
+
+.user-completion-steps {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.user-completion-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.user-completion-marker {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.user-completion-marker svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.user-completion-step.completed .user-completion-marker {
+  border-color: color-mix(in srgb, var(--ok) 35%, var(--border));
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.user-completion-step.in_progress .user-completion-marker {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--card));
+  color: var(--accent);
+}
+
+.user-completion-body {
+  padding: 0.15rem 0 0.35rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.user-completion-step:last-child .user-completion-body {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.user-completion-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.user-completion-title-row strong {
+  color: var(--text-h);
+}
+
+.user-completion-desc {
+  margin: 0.45rem 0 0;
+  font-family: var(--paragraph-font);
+  font-size: var(--paragraph-size);
+  color: var(--paragraph);
+  line-height: 1.45;
+}
+
+.user-completion-action {
+  margin-top: 0.65rem;
 }

@@ -207,10 +207,6 @@ export default function DocumentsTab() {
         <div className="documents-head">
           <div>
             <h2>Documenti</h2>
-            <p className="hcm-hint">
-              Crea modelli online con merge field, versiona le modifiche e genera PDF con dati
-              dipendente.
-            </p>
           </div>
           <button type="button" className="btn primary" onClick={() => {
             setSaveError(null)

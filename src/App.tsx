@@ -12,6 +12,7 @@ import { loadEmployees, saveEmployees } from './storage'
 import { stepsForFlow } from './workflowTemplates'
 import WorkflowTab from './WorkflowTab'
 import DocumentsTab from './DocumentsTab'
+import UserViewTab from './UserViewTab'
 import './App.css'
 
 function newEmployeeId(): string {
@@ -72,7 +73,7 @@ function progressOf(emp: Employee): { done: number; total: number } {
   return { done, total }
 }
 
-type WorkspaceTab = 'da_completare' | 'workflow' | 'documenti'
+type WorkspaceTab = 'da_completare' | 'workflow' | 'documenti' | 'vista_utente'
 
 export default function App() {
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -262,6 +263,11 @@ export default function App() {
     closeFlowView()
   }
 
+  function showUserViewTab() {
+    setWorkspaceTab('vista_utente')
+    closeFlowView()
+  }
+
   return (
     <div className="app">
       <div className="workspace">
@@ -275,7 +281,15 @@ export default function App() {
             className={`main-tab${workspaceTab === 'da_completare' ? ' active' : ''}`}
             onClick={showDaCompletareTab}
           >
-            Da completare
+            <span className="main-tab-label">
+              <svg className="main-tab-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M10 10.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Zm-5.5 6a5.5 5.5 0 0 1 11 0v.25H4.5v-.25Z"
+                />
+              </svg>
+              <span>Da completare</span>
+            </span>
           </button>
           <button
             type="button"
@@ -286,7 +300,15 @@ export default function App() {
             className={`main-tab${workspaceTab === 'workflow' ? ' active' : ''}`}
             onClick={showWorkflowTab}
           >
-            Workflow
+            <span className="main-tab-label">
+              <svg className="main-tab-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M4.25 5.5h11.5a1.25 1.25 0 0 1 1.25 1.25v7a1.25 1.25 0 0 1-1.25 1.25H4.25A1.25 1.25 0 0 1 3 13.75v-7A1.25 1.25 0 0 1 4.25 5.5Zm2.5 2.25v1.5h6.5v-1.5h-6.5Zm0 3v1.5h4.25v-1.5H6.75Z"
+                />
+              </svg>
+              <span>Workflow</span>
+            </span>
           </button>
           <button
             type="button"
@@ -297,7 +319,34 @@ export default function App() {
             className={`main-tab${workspaceTab === 'documenti' ? ' active' : ''}`}
             onClick={showDocumentsTab}
           >
-            Documenti
+            <span className="main-tab-label">
+              <svg className="main-tab-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M5.5 3.75h9A1.25 1.25 0 0 1 15.75 5v10a1.25 1.25 0 0 1-1.25 1.25h-9A1.25 1.25 0 0 1 4.25 15V5A1.25 1.25 0 0 1 5.5 3.75Zm1.5 3h5.5v1.5H7v-1.5Zm0 3h5.5v1.5H7v-1.5Z"
+                />
+              </svg>
+              <span>Documenti</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={workspaceTab === 'vista_utente'}
+            aria-controls="panel-vista-utente"
+            id="tab-vista-utente"
+            className={`main-tab${workspaceTab === 'vista_utente' ? ' active' : ''}`}
+            onClick={showUserViewTab}
+          >
+            <span className="main-tab-label">
+              <svg className="main-tab-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M10 2.75a4.25 4.25 0 1 0 0 8.5 4.25 4.25 0 0 0 0-8.5ZM4.5 16.25v-.5a5.5 5.5 0 0 1 11 0v.5H4.5Z"
+                />
+              </svg>
+              <span>Vista utente</span>
+            </span>
           </button>
         </nav>
 
@@ -596,11 +645,6 @@ export default function App() {
               <section className="hcm-panel panel">
                 <div className="hcm-head">
                   <h2>Da avviare onboarding</h2>
-                  <p className="hcm-hint">
-                    Dipendenti presenti in HCM ancora senza flusso avviato dalla piattaforma. Usa{' '}
-                    <strong>Avvia</strong> per iniziare l’onboarding (o un flusso di offboarding dal
-                    dialog) oppure <strong>Apri</strong> per vedere il profilo e gestire il flusso.
-                  </p>
                 </div>
                 <div className="table-scroll">
                   <table className="hcm-table">
@@ -660,10 +704,6 @@ export default function App() {
               <section className="panel hcm-panel">
                 <div className="hcm-head">
                   <h2>Onboarding da completare</h2>
-                  <p className="hcm-hint">
-                    Flussi onboarding già avviati con almeno un’attività ancora aperta. Nella colonna{' '}
-                    <strong>Attività</strong> vedi completate sul totale.
-                  </p>
                 </div>
                 <div className="table-scroll">
                   <table className="hcm-table">
@@ -724,13 +764,21 @@ export default function App() {
         >
           <WorkflowTab />
         </div>
-        ) : (
+        ) : workspaceTab === 'documenti' ? (
         <div
           id="panel-documenti"
           role="tabpanel"
           aria-labelledby="tab-documenti"
         >
           <DocumentsTab />
+        </div>
+        ) : (
+        <div
+          id="panel-vista-utente"
+          role="tabpanel"
+          aria-labelledby="tab-vista-utente"
+        >
+          <UserViewTab />
         </div>
         )}
       </div>

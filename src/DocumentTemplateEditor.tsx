@@ -115,9 +115,6 @@ export default function DocumentTemplateEditor({
       <div className="documents-head">
         <div>
           <h2>Editor modello</h2>
-          <p className="hcm-hint">
-            Crea il documento online e inserisci i campi dinamici dal menu dedicato.
-          </p>
         </div>
         <div className="document-editor-head-actions">
           <input

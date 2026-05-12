@@ -492,10 +492,6 @@ export default function WorkflowTab() {
             <div className="workflow-head">
               <div>
                 <h2>Crea workflow</h2>
-                <p className="hcm-hint">
-                  Definisci un nuovo processo con ambito organizzativo e sequenza di step
-                  operativi.
-                </p>
               </div>
               <button type="button" className="btn primary" onClick={openWizard}>
                 Crea workflow
