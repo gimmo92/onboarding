@@ -17,9 +17,11 @@ export type DocumentTemplate = {
   fileName: string
   mimeType: string
   storageData: string
+  editorHtml?: string
   extractedText?: string
   tags: DocumentTemplateTagKey[]
   createdAt: string
+  updatedAt?: string
 }
 
 const TAG_TOKEN_BY_KEY = new Map(
@@ -41,6 +43,23 @@ export function detectDocumentTags(text: string): DocumentTemplateTagKey[] {
   }
 
   return DOCUMENT_TEMPLATE_TAGS.map((tag) => tag.key).filter((key) => found.has(key))
+}
+
+export function detectDocumentTagsFromContent(
+  html?: string,
+  text?: string
+): DocumentTemplateTagKey[] {
+  return detectDocumentTags(`${html ?? ''}\n${text ?? ''}`)
+}
+
+export async function extractDocumentHtml(file: File): Promise<string> {
+  if (file.name.toLowerCase().endsWith('.docx')) {
+    const arrayBuffer = await file.arrayBuffer()
+    const result = await mammoth.convertToHtml({ arrayBuffer })
+    return result.value || '<p></p>'
+  }
+
+  return '<p></p>'
 }
 
 export async function extractDocumentText(file: File): Promise<string> {
@@ -87,4 +106,9 @@ export function formatDocumentTags(tags: DocumentTemplateTagKey[]): string {
   return tags
     .map((key) => TAG_TOKEN_BY_KEY.get(key) ?? `{{${key}}}`)
     .join(', ')
+}
+
+export function htmlToPlainText(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  return doc.body.textContent?.replace(/\u00a0/g, ' ').trim() ?? ''
 }

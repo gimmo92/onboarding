@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import DocumentTemplateEditor from './DocumentTemplateEditor'
 import {
   DOCUMENT_TEMPLATE_TAGS,
-  detectDocumentTags,
+  detectDocumentTagsFromContent,
+  extractDocumentHtml,
   extractDocumentText,
   fileToBase64,
   formatDocumentTags,
@@ -20,11 +22,14 @@ function newId(): string {
 export default function DocumentsTab() {
   const [documents, setDocuments] = useState<DocumentTemplate[]>(() => loadDocumentTemplates())
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [documentName, setDocumentName] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const editingTemplate = documents.find((document) => document.id === editingId) ?? null
 
   useEffect(() => {
     saveDocumentTemplates(documents)
@@ -40,6 +45,7 @@ export default function DocumentsTab() {
   }
 
   function openUploadForm() {
+    setEditingId(null)
     resetUploadForm()
     setUploadOpen(true)
   }
@@ -47,6 +53,15 @@ export default function DocumentsTab() {
   function closeUploadForm() {
     setUploadOpen(false)
     resetUploadForm()
+  }
+
+  function openEditor(id: string) {
+    setUploadOpen(false)
+    setEditingId(id)
+  }
+
+  function closeEditor() {
+    setEditingId(null)
   }
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
@@ -69,8 +84,9 @@ export default function DocumentsTab() {
     setUploadError(null)
 
     try {
-      const [storageData, extractedText] = await Promise.all([
+      const [storageData, editorHtml, extractedText] = await Promise.all([
         fileToBase64(selectedFile),
+        extractDocumentHtml(selectedFile),
         extractDocumentText(selectedFile),
       ])
 
@@ -80,13 +96,15 @@ export default function DocumentsTab() {
         fileName: selectedFile.name,
         mimeType: selectedFile.type || 'application/octet-stream',
         storageData,
+        editorHtml,
         extractedText: extractedText || undefined,
-        tags: detectDocumentTags(extractedText),
+        tags: detectDocumentTagsFromContent(editorHtml, extractedText),
         createdAt: new Date().toISOString(),
       }
 
       setDocuments((current) => [template, ...current])
       closeUploadForm()
+      setEditingId(template.id)
     } catch {
       setUploadError('Caricamento non riuscito. Riprova con un altro file.')
     } finally {
@@ -94,8 +112,41 @@ export default function DocumentsTab() {
     }
   }
 
+  function saveEditedTemplate(
+    id: string,
+    patch: Pick<DocumentTemplate, 'editorHtml' | 'extractedText' | 'tags'>
+  ) {
+    setDocuments((current) =>
+      current.map((document) =>
+        document.id === id
+          ? {
+              ...document,
+              ...patch,
+              updatedAt: new Date().toISOString(),
+            }
+          : document
+      )
+    )
+    closeEditor()
+  }
+
   function removeDocument(id: string) {
     setDocuments((current) => current.filter((document) => document.id !== id))
+    if (editingId === id) {
+      closeEditor()
+    }
+  }
+
+  if (editingTemplate) {
+    return (
+      <div className="documents-tab">
+        <DocumentTemplateEditor
+          template={editingTemplate}
+          onSave={(patch) => saveEditedTemplate(editingTemplate.id, patch)}
+          onCancel={closeEditor}
+        />
+      </div>
+    )
   }
 
   return (
@@ -107,7 +158,8 @@ export default function DocumentsTab() {
               <div>
                 <h2>Carica documento</h2>
                 <p className="hcm-hint">
-                  Carica un modello Word (.doc o .docx) con i tag{' '}
+                  Carica un modello Word (.doc o .docx). Dopo il caricamento potrai aprirlo
+                  nell&apos;editor e inserire i tag{' '}
                   {DOCUMENT_TEMPLATE_TAGS.map((tag) => tag.token).join(', ')}.
                 </p>
               </div>
@@ -168,7 +220,8 @@ export default function DocumentsTab() {
               <div>
                 <h2>Documenti</h2>
                 <p className="hcm-hint">
-                  Carica modelli Word con tag anagrafici da riutilizzare negli step dei workflow.
+                  Carica modelli Word, aprili nell&apos;editor WYSIWYG e inserisci i tag
+                  anagrafici da riutilizzare nei workflow.
                 </p>
               </div>
               <button type="button" className="btn primary" onClick={openUploadForm}>
@@ -212,13 +265,22 @@ export default function DocumentsTab() {
                           })}
                         </td>
                         <td className="col-action">
-                          <button
-                            type="button"
-                            className="btn ghost btn-compact"
-                            onClick={() => removeDocument(document.id)}
-                          >
-                            Elimina
-                          </button>
+                          <div className="row-actions">
+                            <button
+                              type="button"
+                              className="btn primary btn-compact"
+                              onClick={() => openEditor(document.id)}
+                            >
+                              Apri
+                            </button>
+                            <button
+                              type="button"
+                              className="btn ghost btn-compact"
+                              onClick={() => removeDocument(document.id)}
+                            >
+                              Elimina
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
