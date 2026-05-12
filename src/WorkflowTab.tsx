@@ -313,7 +313,7 @@ export default function WorkflowTab() {
                   ) : null}
                   {draftStepNeedsDocument && documentTemplates.length === 0 ? (
                     <p className="wizard-empty">
-                      Nessun documento disponibile. Carica un modello nella tab{' '}
+                      Nessun documento disponibile. Crea un modello nella tab{' '}
                       <strong>Documenti</strong>.
                     </p>
                   ) : null}

@@ -1073,6 +1073,192 @@
   font-size: 0.85rem;
 }
 
+.document-editor-panel {
+  gap: 1rem;
+}
+
+.document-editor-head-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.document-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.document-editor-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.document-editor-toolbar .btn.is-active {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--card));
+}
+
+.document-editor-field-picker {
+  position: relative;
+}
+
+.document-field-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 20;
+  width: min(320px, 80vw);
+  max-height: 360px;
+  overflow: auto;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--text-h) 12%, transparent);
+}
+
+.document-field-menu-group + .document-field-menu-group {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+}
+
+.document-field-menu-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.document-field-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.document-field-menu button {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  background: transparent;
+  color: var(--text-h);
+  font: inherit;
+  cursor: pointer;
+}
+
+.document-field-menu button:hover {
+  background: var(--surface-2);
+}
+
+.document-editor-surface {
+  min-height: 360px;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text-h);
+  line-height: 1.55;
+  text-align: left;
+}
+
+.document-editor-surface:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.document-editor-surface p,
+.document-editor-surface h1,
+.document-editor-surface h2,
+.document-editor-surface h3 {
+  margin: 0 0 0.75rem;
+}
+
+.document-editor-surface ul,
+.document-editor-surface ol {
+  margin: 0 0 0.75rem;
+  padding-left: 1.25rem;
+}
+
+.document-editor-surface table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.75rem;
+}
+
+.document-editor-surface th,
+.document-editor-surface td {
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.55rem;
+  vertical-align: top;
+}
+
+.merge-field-chip {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #3b82f6 18%, var(--card));
+  border: 1px solid color-mix(in srgb, #3b82f6 35%, var(--border));
+  color: color-mix(in srgb, #1d4ed8 70%, var(--text-h));
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.template-rendered-document {
+  color: var(--text-h);
+  line-height: 1.55;
+}
+
+.template-rendered-document h1,
+.template-rendered-document h2,
+.template-rendered-document h3,
+.template-rendered-document p,
+.template-rendered-document ul,
+.template-rendered-document ol {
+  margin: 0 0 0.75rem;
+}
+
+.template-rendered-document table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.75rem;
+}
+
+.template-rendered-document th,
+.template-rendered-document td {
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.55rem;
+}
+
+.document-preview-version-field {
+  margin-bottom: 0.75rem;
+}
+
+.document-preview-render {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  max-height: 60vh;
+  overflow: auto;
+}
+
 .document-preview-dialog {
   width: min(1100px, calc(100% - 2rem));
   max-height: calc(100vh - 2rem);

@@ -1,11 +1,9 @@
-import { useEffect, useMemo } from 'react'
-import {
-  applyDummyDataToText,
-  DOCUMENT_TEMPLATE_DUMMY_DATA,
-  DOCUMENT_TEMPLATE_TAGS,
-  templatePdfBlobUrl,
-  type DocumentTemplate,
-} from './documentTemplates'
+import { useMemo, useState } from 'react'
+import type { DocumentTemplate } from './documentTemplates'
+import { formatTemplateVersionLabel, getCurrentTemplateVersion } from './documentTemplates'
+import { buildSampleMergeContext } from './templates/employeeMergeContext'
+import { downloadHtmlAsPdf } from './templates/htmlToPdf'
+import { renderTemplateHtml } from './templates/templateEngine'
 
 type DocumentTemplatePreviewProps = {
   template: DocumentTemplate
@@ -16,70 +14,82 @@ export default function DocumentTemplatePreview({
   template,
   onClose,
 }: DocumentTemplatePreviewProps) {
-  const pdfUrl = useMemo(() => templatePdfBlobUrl(template), [template])
+  const [selectedVersion, setSelectedVersion] = useState(template.currentVersion)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
-  useEffect(() => {
-    return () => {
-      URL.revokeObjectURL(pdfUrl)
+  const version =
+    template.versions.find((item) => item.version === selectedVersion) ??
+    getCurrentTemplateVersion(template)
+
+  const renderedHtml = useMemo(() => {
+    if (!version) return ''
+    return renderTemplateHtml(version.htmlWithPlaceholders, buildSampleMergeContext())
+  }, [version])
+
+  async function handleDownloadPdf() {
+    if (!version || !renderedHtml) return
+    setExporting(true)
+    setExportError(null)
+    try {
+      await downloadHtmlAsPdf(renderedHtml, `${template.name}.pdf`, template.name)
+    } catch {
+      setExportError('Esportazione PDF non riuscita.')
+    } finally {
+      setExporting(false)
     }
-  }, [pdfUrl])
+  }
 
-  const mappedTags = template.tags.length
-    ? template.tags
-    : DOCUMENT_TEMPLATE_TAGS.map((tag) => tag.key)
-
-  const previewText = template.extractedText
-    ? applyDummyDataToText(template.extractedText)
-    : 'Nessun testo leggibile nel PDF. Verifica che i segnaposto siano presenti nel file preparato su PC.'
+  if (!version) {
+    return null
+  }
 
   return (
     <dialog className="sign-dialog document-preview-dialog" open>
       <h4>Anteprima modello</h4>
       <p className="dialog-doc-title">
         <strong>{template.name}</strong>
-        <span className="dialog-sub"> — {template.fileName}</span>
+        <span className="dialog-sub"> — versione {version.version}</span>
       </p>
       <p className="dialog-copy">
-        I campi sono mappati nel PDF preparato su PC. Qui vedi il documento originale e i
-        valori di esempio applicati ai segnaposto rilevati.
+        Anteprima con dati di esempio del dipendente. Puoi scaricare il documento in PDF.
       </p>
 
-      <div className="document-preview-layout">
-        <section className="document-preview-pane">
-          <h5 className="document-preview-title">PDF caricato</h5>
-          <iframe
-            className="document-preview-frame"
-            src={pdfUrl}
-            title={`Anteprima PDF ${template.name}`}
-          />
-        </section>
+      <label className="wizard-field document-preview-version-field">
+        Versione
+        <select
+          value={selectedVersion}
+          onChange={(event) => setSelectedVersion(Number(event.target.value))}
+        >
+          {template.versions
+            .slice()
+            .sort((left, right) => right.version - left.version)
+            .map((item) => (
+              <option key={item.version} value={item.version}>
+                {formatTemplateVersionLabel(item)}
+              </option>
+            ))}
+        </select>
+      </label>
 
-        <section className="document-preview-pane">
-          <h5 className="document-preview-title">Campi mappati con dati di esempio</h5>
-          <ul className="document-preview-fields">
-            {mappedTags.map((key) => {
-              const tag = DOCUMENT_TEMPLATE_TAGS.find((item) => item.key === key)
-              if (!tag) return null
-              return (
-                <li key={key}>
-                  <span className="document-preview-field-label">{tag.label}</span>
-                  <code>{tag.token}</code>
-                  <span className="document-preview-field-value">
-                    {DOCUMENT_TEMPLATE_DUMMY_DATA[key]}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
+      <div
+        className="template-rendered-document document-preview-render"
+        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+      />
 
-          <h5 className="document-preview-title">Testo con valori di esempio</h5>
-          <pre className="document-preview-text">{previewText}</pre>
-        </section>
-      </div>
+      {exportError ? <p className="document-upload-error">{exportError}</p> : null}
 
       <div className="dialog-actions">
-        <button type="button" className="btn primary" onClick={onClose}>
+        <button type="button" className="btn ghost" onClick={onClose}>
           Chiudi
+        </button>
+        <button
+          type="button"
+          className="btn primary"
+          onClick={handleDownloadPdf}
+          disabled={exporting}
+        >
+          {exporting ? 'Esportazione...' : 'Scarica PDF'}
         </button>
       </div>
     </dialog>
