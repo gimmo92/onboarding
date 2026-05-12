@@ -122,10 +122,6 @@ export default function UserViewTab() {
   return (
     <div className="user-view-tab">
       <section className="panel user-view-panel">
-        <div className="user-view-head">
-          <h2>Vista utente</h2>
-        </div>
-
         <article className="user-workflow-card">
           <header className="user-workflow-card-head">
             <div>

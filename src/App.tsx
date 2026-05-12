@@ -275,6 +275,25 @@ export default function App() {
           <button
             type="button"
             role="tab"
+            aria-selected={workspaceTab === 'vista_utente'}
+            aria-controls="panel-vista-utente"
+            id="tab-vista-utente"
+            className={`main-tab${workspaceTab === 'vista_utente' ? ' active' : ''}`}
+            onClick={showUserViewTab}
+          >
+            <span className="main-tab-label">
+              <svg className="main-tab-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M10 2.75a4.25 4.25 0 1 0 0 8.5 4.25 4.25 0 0 0 0-8.5ZM4.5 16.25v-.5a5.5 5.5 0 0 1 11 0v.5H4.5Z"
+                />
+              </svg>
+              <span>Le tue attività</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            role="tab"
             aria-selected={workspaceTab === 'da_completare'}
             aria-controls="panel-da-completare"
             id="tab-da-completare"
@@ -327,25 +346,6 @@ export default function App() {
                 />
               </svg>
               <span>Documenti</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={workspaceTab === 'vista_utente'}
-            aria-controls="panel-vista-utente"
-            id="tab-vista-utente"
-            className={`main-tab${workspaceTab === 'vista_utente' ? ' active' : ''}`}
-            onClick={showUserViewTab}
-          >
-            <span className="main-tab-label">
-              <svg className="main-tab-icon" viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  fill="currentColor"
-                  d="M10 2.75a4.25 4.25 0 1 0 0 8.5 4.25 4.25 0 0 0 0-8.5ZM4.5 16.25v-.5a5.5 5.5 0 0 1 11 0v.5H4.5Z"
-                />
-              </svg>
-              <span>Vista utente</span>
             </span>
           </button>
         </nav>

@@ -54,12 +54,12 @@
 }
 
 .main-tab:hover {
-  color: #2152ff;
+  color: #0a6cd2;
   background: transparent;
 }
 
 .main-tab.active {
-  color: #2152ff;
+  color: #0a6cd2;
   font-weight: 600;
   background: transparent;
   border-color: transparent;
@@ -74,7 +74,7 @@
   bottom: -1px;
   height: 3px;
   border-radius: 3px 3px 0 0;
-  background: #2152ff;
+  background: #0a6cd2;
 }
 
 .tab-stack,
@@ -1377,16 +1377,7 @@
   gap: 1.25rem;
 }
 
-.user-view-head h2 {
-  margin: 0;
-  font-size: 1rem;
-  text-transform: none;
-  letter-spacing: normal;
-  color: var(--text-h);
-}
-
 .user-workflow-card {
-  margin-top: 1rem;
   padding: 1.1rem 1.15rem;
   border: 1px solid var(--border);
   border-radius: 14px;
