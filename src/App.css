@@ -87,8 +87,6 @@
 
 .hcm-hint {
   margin: 0;
-  font-size: 0.85rem;
-  color: var(--muted);
   line-height: 1.45;
   max-width: 70ch;
 }
@@ -426,8 +424,6 @@
 
 .meta {
   margin: 0;
-  font-size: 0.9rem;
-  color: var(--muted);
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -497,8 +493,6 @@
 
 .steps-intro {
   margin: 0 0 0.85rem;
-  font-size: 0.88rem;
-  color: var(--muted);
   max-width: 58ch;
 }
 
@@ -704,8 +698,6 @@
 
 .dialog-copy {
   margin: 0 0 1rem;
-  font-size: 0.9rem;
-  color: var(--muted);
   line-height: 1.5;
 }
 
@@ -729,6 +721,10 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.workflow-tab > .workflow-panel + .workflow-panel {
+  margin-top: 1rem;
 }
 
 .workflow-head {
@@ -762,8 +758,6 @@
 .workflow-empty,
 .wizard-empty {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
 }
 
 .workflow-scope-sep {

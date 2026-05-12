@@ -588,12 +588,6 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <section className="steps-section profile-placeholder">
-                <p className="steps-intro">
-                  Profilo anagrafico da HCM. Nessun flusso onboarding o offboarding è ancora stato
-                  avviato per questa persona.
-                </p>
-              </section>
             </>
           ) : null}
             </main>

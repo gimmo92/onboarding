@@ -32,6 +32,9 @@
     0 6px 14px rgba(18, 24, 40, 0.06);
 
   --sans: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  --paragraph-font: 'Open Sans', var(--sans);
+  --paragraph-size: 0.875rem;
+  --paragraph: #8392ab;
 
   font-family: var(--sans);
   font-size: 16px;
@@ -82,6 +85,12 @@
 
 body {
   margin: 0;
+}
+
+p {
+  font-family: var(--paragraph-font);
+  font-size: var(--paragraph-size);
+  color: var(--paragraph);
 }
 
 h1,
