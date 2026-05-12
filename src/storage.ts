@@ -1,18 +1,32 @@
 import type { Employee } from './types'
+import { loadCollection, saveCollection } from './lib/collectionStorage'
 
+const TABLE = 'onboarding_employees'
 const KEY = 'hr-on-offboarding:v1'
 
-export function loadEmployees(): Employee[] {
-  try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return []
-    const data = JSON.parse(raw) as unknown
-    return Array.isArray(data) ? (data as Employee[]) : []
-  } catch {
-    return []
+function isEmployee(value: unknown): value is Employee {
+  if (!value || typeof value !== 'object') {
+    return false
   }
+
+  const employee = value as Employee
+  return (
+    typeof employee.id === 'string' &&
+    typeof employee.firstName === 'string' &&
+    typeof employee.lastName === 'string' &&
+    typeof employee.email === 'string' &&
+    typeof employee.department === 'string' &&
+    (employee.flow === 'onboarding' || employee.flow === 'offboarding') &&
+    typeof employee.referenceDate === 'string' &&
+    typeof employee.createdAt === 'string' &&
+    Array.isArray(employee.steps)
+  )
 }
 
-export function saveEmployees(list: Employee[]) {
-  localStorage.setItem(KEY, JSON.stringify(list))
+export function loadEmployees(): Promise<Employee[]> {
+  return loadCollection(TABLE, KEY, isEmployee)
+}
+
+export function saveEmployees(list: Employee[]): Promise<boolean> {
+  return saveCollection(TABLE, KEY, list, isEmployee)
 }

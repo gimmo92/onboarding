@@ -75,7 +75,9 @@ function progressOf(emp: Employee): { done: number; total: number } {
 type WorkspaceTab = 'da_completare' | 'workflow' | 'documenti'
 
 export default function App() {
-  const [employees, setEmployees] = useState<Employee[]>(() => loadEmployees())
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [employeesReady, setEmployeesReady] = useState(false)
+  const [storageError, setStorageError] = useState<string | null>(null)
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('da_completare')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [signContext, setSignContext] = useState<{
@@ -93,8 +95,34 @@ export default function App() {
   const [previewHcm, setPreviewHcm] = useState<HcmEmployee | null>(null)
 
   useEffect(() => {
-    saveEmployees(employees)
-  }, [employees])
+    let active = true
+
+    loadEmployees()
+      .then((list) => {
+        if (!active) return
+        setEmployees(list)
+        setEmployeesReady(true)
+      })
+      .catch(() => {
+        if (!active) return
+        setStorageError('Caricamento dati non riuscito.')
+        setEmployeesReady(true)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!employeesReady) return
+
+    void saveEmployees(employees).then((saved) => {
+      if (!saved) {
+        setStorageError('Salvataggio dati non riuscito.')
+      }
+    })
+  }, [employees, employeesReady])
 
   useEffect(() => {
     const d = dialogRef.current
@@ -267,6 +295,8 @@ export default function App() {
             Documenti
           </button>
         </nav>
+
+        {storageError ? <p className="document-upload-error">{storageError}</p> : null}
 
         {workspaceTab === 'da_completare' ? (
         <div

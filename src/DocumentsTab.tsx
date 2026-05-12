@@ -26,11 +26,13 @@ type EditorMode =
   | { kind: 'edit'; templateId: string; version?: number }
 
 export default function DocumentsTab() {
-  const [documents, setDocuments] = useState<DocumentTemplate[]>(() => loadDocumentTemplates())
+  const [documents, setDocuments] = useState<DocumentTemplate[]>([])
+  const [documentsReady, setDocumentsReady] = useState(false)
   const [editorMode, setEditorMode] = useState<EditorMode>({ kind: 'closed' })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
+  const [storageError, setStorageError] = useState<string | null>(null)
   const editingTemplate =
     editorMode.kind === 'edit'
       ? (documents.find((document) => document.id === editorMode.templateId) ?? null)
@@ -51,15 +53,41 @@ export default function DocumentsTab() {
   }, [editorMode, editingTemplate])
 
   useEffect(() => {
-    saveDocumentTemplates(documents)
-  }, [documents])
+    let active = true
+
+    loadDocumentTemplates()
+      .then((list) => {
+        if (!active) return
+        setDocuments(list)
+        setDocumentsReady(true)
+      })
+      .catch(() => {
+        if (!active) return
+        setStorageError('Caricamento modelli non riuscito.')
+        setDocumentsReady(true)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!documentsReady) return
+
+    void saveDocumentTemplates(documents).then((saved) => {
+      if (!saved) {
+        setStorageError('Salvataggio modelli non riuscito.')
+      }
+    })
+  }, [documents, documentsReady])
 
   function closeEditor() {
     setEditorMode({ kind: 'closed' })
     setSaveError(null)
   }
 
-  function handleSaveTemplate(payload: { name: string; editorJson: JSONContent }) {
+  async function handleSaveTemplate(payload: { name: string; editorJson: JSONContent }) {
     const trimmedName = payload.name.trim()
     if (!trimmedName) {
       setSaveError('Inserisci un nome per il modello.')
@@ -118,8 +146,9 @@ export default function DocumentsTab() {
         return
       }
 
-      if (!saveDocumentTemplates(nextDocuments)) {
-        setSaveError('Salvataggio non riuscito. Lo spazio locale del browser potrebbe essere pieno.')
+      const saved = await saveDocumentTemplates(nextDocuments)
+      if (!saved) {
+        setSaveError('Salvataggio non riuscito. Verifica la connessione a Supabase e riprova.')
         return
       }
 
@@ -189,6 +218,7 @@ export default function DocumentsTab() {
 
       <section className="panel documents-panel">
         <h2 className="workflow-list-title">Modelli salvati</h2>
+        {storageError ? <p className="document-upload-error">{storageError}</p> : null}
         {previewError ? <p className="document-upload-error">{previewError}</p> : null}
         {documents.length === 0 ? (
           <p className="workflow-empty">

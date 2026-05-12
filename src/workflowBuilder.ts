@@ -7,7 +7,7 @@ export type WorkflowBlueprintStep = {
   kind: WorkflowBlueprintStepKind
   title: string
   description: string
-  documentTemplateId?: string
+  requiredDocument?: string
 }
 
 export type WorkflowScope =

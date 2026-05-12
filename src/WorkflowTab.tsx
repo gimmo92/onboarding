@@ -9,8 +9,6 @@ import {
   loadWorkflowDefinitions,
   saveWorkflowDefinitions,
 } from './workflowTemplateStorage'
-import { loadDocumentTemplates } from './documentTemplateStorage'
-import { documentTemplateLabel } from './documentTemplates'
 import type {
   WorkflowBlueprintStep,
   WorkflowBlueprintStepKind,
@@ -34,7 +32,7 @@ const EMPTY_DRAFT_STEP = {
   kind: 'document_sign' as WorkflowBlueprintStepKind,
   title: '',
   description: '',
-  documentTemplateId: '',
+  requiredDocument: '',
 }
 
 const SCOPE_LOOKUP = {
@@ -72,23 +70,43 @@ function scopeRequiresTargets(type: WorkflowScopeType): type is keyof typeof SCO
 }
 
 export default function WorkflowTab() {
-  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>(() =>
-    loadWorkflowDefinitions()
-  )
+  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([])
+  const [workflowsReady, setWorkflowsReady] = useState(false)
+  const [storageError, setStorageError] = useState<string | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [wizardStep, setWizardStep] = useState<WizardStep>(1)
   const [draft, setDraft] = useState<WizardDraft>(createEmptyDraft)
   const [draftStep, setDraftStep] = useState(EMPTY_DRAFT_STEP)
-  const [documentTemplates, setDocumentTemplates] = useState(() => loadDocumentTemplates())
 
   useEffect(() => {
-    saveWorkflowDefinitions(workflows)
-  }, [workflows])
+    let active = true
+
+    loadWorkflowDefinitions()
+      .then((list) => {
+        if (!active) return
+        setWorkflows(list)
+        setWorkflowsReady(true)
+      })
+      .catch(() => {
+        if (!active) return
+        setStorageError('Caricamento workflow non riuscito.')
+        setWorkflowsReady(true)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
-    if (!wizardOpen) return
-    setDocumentTemplates(loadDocumentTemplates())
-  }, [wizardOpen])
+    if (!workflowsReady) return
+
+    void saveWorkflowDefinitions(workflows).then((saved) => {
+      if (!saved) {
+        setStorageError('Salvataggio workflow non riuscito.')
+      }
+    })
+  }, [workflows, workflowsReady])
 
   const scopeOptions = useMemo(() => {
     if (!scopeRequiresTargets(draft.scopeType)) return []
@@ -105,7 +123,7 @@ export default function WorkflowTab() {
     draft.steps.every((step) => {
       if (!step.title.trim()) return false
       if (blueprintStepRequiresDocumentTemplate(step.kind)) {
-        return Boolean(step.documentTemplateId)
+        return Boolean(step.requiredDocument?.trim())
       }
       return true
     })
@@ -114,7 +132,7 @@ export default function WorkflowTab() {
 
   const canAddBlueprintStep =
     draftStep.title.trim().length > 0 &&
-    (!draftStepNeedsDocument || Boolean(draftStep.documentTemplateId))
+    (!draftStepNeedsDocument || Boolean(draftStep.requiredDocument.trim()))
 
   function openWizard() {
     setDraft(createEmptyDraft())
@@ -159,8 +177,8 @@ export default function WorkflowTab() {
           kind: draftStep.kind,
           title,
           description: draftStep.description.trim(),
-          documentTemplateId: draftStepNeedsDocument
-            ? draftStep.documentTemplateId
+          requiredDocument: draftStepNeedsDocument
+            ? draftStep.requiredDocument.trim()
             : undefined,
         },
       ],
@@ -192,6 +210,7 @@ export default function WorkflowTab() {
 
   return (
     <div className="workflow-tab">
+      {storageError ? <p className="document-upload-error">{storageError}</p> : null}
       {wizardOpen ? (
         <section className="panel workflow-panel">
           <div className="workflow-wizard">
@@ -279,8 +298,8 @@ export default function WorkflowTab() {
                         setDraftStep((current) => ({
                           ...current,
                           kind,
-                          documentTemplateId: blueprintStepRequiresDocumentTemplate(kind)
-                            ? current.documentTemplateId
+                          requiredDocument: blueprintStepRequiresDocumentTemplate(kind)
+                            ? current.requiredDocument
                             : '',
                         }))
                       }}
@@ -292,30 +311,19 @@ export default function WorkflowTab() {
                   </label>
                   {draftStepNeedsDocument ? (
                     <label className="wizard-field">
-                      Documento
-                      <select
-                        value={draftStep.documentTemplateId}
+                      Documento richiesto
+                      <input
+                        type="text"
+                        value={draftStep.requiredDocument}
                         onChange={(event) =>
                           setDraftStep((current) => ({
                             ...current,
-                            documentTemplateId: event.target.value,
+                            requiredDocument: event.target.value,
                           }))
                         }
-                      >
-                        <option value="">Seleziona un documento</option>
-                        {documentTemplates.map((template) => (
-                          <option key={template.id} value={template.id}>
-                            {template.name}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="Es. Contratto di assunzione"
+                      />
                     </label>
-                  ) : null}
-                  {draftStepNeedsDocument && documentTemplates.length === 0 ? (
-                    <p className="wizard-empty">
-                      Nessun documento disponibile. Crea un modello nella tab{' '}
-                      <strong>Documenti</strong>.
-                    </p>
                   ) : null}
                   <label className="wizard-field">
                     Titolo step
@@ -364,11 +372,9 @@ export default function WorkflowTab() {
                           <p className="blueprint-step-kind">
                             {blueprintStepKindLabel(step.kind)}
                           </p>
-                          {step.documentTemplateId ? (
+                          {step.requiredDocument ? (
                             <p className="blueprint-step-doc">
-                              Documento:{' '}
-                              {documentTemplateLabel(documentTemplates, step.documentTemplateId) ??
-                                'Modello non disponibile'}
+                              Documento richiesto: {step.requiredDocument}
                             </p>
                           ) : null}
                           {step.description ? (
