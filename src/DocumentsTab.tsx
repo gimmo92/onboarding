@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { JSONContent } from '@tiptap/core'
 import DocumentTemplateEditor from './DocumentTemplateEditor'
-import DocumentTemplatePreview from './DocumentTemplatePreview'
 import {
   type DocumentTemplate,
   formatTemplateVersionLabel,
@@ -14,6 +13,7 @@ import {
   upsertDocumentTemplate,
 } from './documentTemplateStorage'
 import { extractMergeFieldKeys } from './templates/templateEngine'
+import { openDocumentTemplatePreviewInNewTab } from './templates/documentTemplatePreviewWindow'
 import { emptyTemplateDocument, serializeDocumentToMergeHtml } from './templates/templateSerialization'
 
 function newId(): string {
@@ -28,11 +28,9 @@ type EditorMode =
 export default function DocumentsTab() {
   const [documents, setDocuments] = useState<DocumentTemplate[]>(() => loadDocumentTemplates())
   const [editorMode, setEditorMode] = useState<EditorMode>({ kind: 'closed' })
-  const [previewId, setPreviewId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-
-  const previewTemplate = documents.find((document) => document.id === previewId) ?? null
+  const [previewError, setPreviewError] = useState<string | null>(null)
   const editingTemplate =
     editorMode.kind === 'edit'
       ? (documents.find((document) => document.id === editorMode.templateId) ?? null)
@@ -136,11 +134,16 @@ export default function DocumentsTab() {
 
   function removeDocument(id: string) {
     setDocuments((current) => current.filter((document) => document.id !== id))
-    if (previewId === id) {
-      setPreviewId(null)
-    }
     if (editorMode.kind === 'edit' && editorMode.templateId === id) {
       closeEditor()
+    }
+  }
+
+  function handlePreview(document: DocumentTemplate) {
+    setPreviewError(null)
+    const opened = openDocumentTemplatePreviewInNewTab(document)
+    if (!opened) {
+      setPreviewError('Impossibile aprire l\'anteprima. Consenti i popup per questo sito e riprova.')
     }
   }
 
@@ -186,6 +189,7 @@ export default function DocumentsTab() {
 
       <section className="panel documents-panel">
         <h2 className="workflow-list-title">Modelli salvati</h2>
+        {previewError ? <p className="document-upload-error">{previewError}</p> : null}
         {documents.length === 0 ? (
           <p className="workflow-empty">
             Nessun modello salvato. Usa <strong>Nuovo modello</strong> per iniziare.
@@ -229,7 +233,7 @@ export default function DocumentsTab() {
                           <button
                             type="button"
                             className="btn primary btn-compact"
-                            onClick={() => setPreviewId(document.id)}
+                            onClick={() => handlePreview(document)}
                           >
                             Anteprima
                           </button>
@@ -259,13 +263,6 @@ export default function DocumentsTab() {
           </div>
         )}
       </section>
-
-      {previewTemplate ? (
-        <DocumentTemplatePreview
-          template={previewTemplate}
-          onClose={() => setPreviewId(null)}
-        />
-      ) : null}
     </div>
   )
 }
