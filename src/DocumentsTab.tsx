@@ -6,6 +6,7 @@ import {
   fileToBase64,
   formatDocumentTags,
   isPdfDocumentFile,
+  isValidPdfContent,
   type DocumentTemplate,
 } from './documentTemplates'
 import {
@@ -64,7 +65,7 @@ export default function DocumentsTab() {
       return
     }
     if (!isPdfDocumentFile(selectedFile)) {
-      setUploadError('Sono supportati solo file PDF.')
+      setUploadError('Sono accettati solo file PDF.')
       return
     }
 
@@ -72,6 +73,12 @@ export default function DocumentsTab() {
     setUploadError(null)
 
     try {
+      const isPdf = await isValidPdfContent(selectedFile)
+      if (!isPdf) {
+        setUploadError('Il file selezionato non è un PDF valido.')
+        return
+      }
+
       const arrayBuffer = await selectedFile.arrayBuffer()
       const [storageData, extractedText] = await Promise.all([
         fileToBase64(selectedFile),
@@ -113,7 +120,7 @@ export default function DocumentsTab() {
               <div>
                 <h2>Carica documento</h2>
                 <p className="hcm-hint">
-                  Carica un PDF preparato su PC con i segnaposto già mappati nel file.
+                  Solo PDF preparati su PC con i segnaposto già mappati nel file.
                 </p>
               </div>
             </div>
@@ -134,10 +141,32 @@ export default function DocumentsTab() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,application/pdf"
-                onChange={(event) => {
-                  setSelectedFile(event.target.files?.[0] ?? null)
+                accept="application/pdf,.pdf"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0] ?? null
                   setUploadError(null)
+
+                  if (!file) {
+                    setSelectedFile(null)
+                    return
+                  }
+
+                  if (!isPdfDocumentFile(file)) {
+                    setSelectedFile(null)
+                    setUploadError('Sono accettati solo file PDF.')
+                    event.target.value = ''
+                    return
+                  }
+
+                  const isPdf = await isValidPdfContent(file)
+                  if (!isPdf) {
+                    setSelectedFile(null)
+                    setUploadError('Il file selezionato non è un PDF valido.')
+                    event.target.value = ''
+                    return
+                  }
+
+                  setSelectedFile(file)
                 }}
               />
             </label>

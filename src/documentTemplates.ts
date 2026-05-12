@@ -39,7 +39,19 @@ const TAG_TOKEN_BY_KEY = new Map(
 
 export function isPdfDocumentFile(file: File): boolean {
   const lower = file.name.toLowerCase()
-  return file.type === 'application/pdf' || lower.endsWith('.pdf')
+  if (!lower.endsWith('.pdf')) {
+    return false
+  }
+  return file.type === '' || file.type === 'application/pdf'
+}
+
+export async function isValidPdfContent(file: File): Promise<boolean> {
+  if (!isPdfDocumentFile(file)) {
+    return false
+  }
+
+  const header = await file.slice(0, 5).text()
+  return header.startsWith('%PDF-')
 }
 
 export function detectDocumentTags(text: string): DocumentTemplateTagKey[] {
