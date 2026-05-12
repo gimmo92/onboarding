@@ -10,6 +10,7 @@ import type {
 import { MOCK_HCM_EMPLOYEES } from './mockHcm'
 import { loadEmployees, saveEmployees } from './storage'
 import { stepsForFlow } from './workflowTemplates'
+import WorkflowTab from './WorkflowTab'
 import './App.css'
 
 function newEmployeeId(): string {
@@ -70,7 +71,7 @@ function progressOf(emp: Employee): { done: number; total: number } {
   return { done, total }
 }
 
-type WorkspaceTab = 'da_completare' | 'gestione'
+type WorkspaceTab = 'da_completare' | 'gestione' | 'workflow'
 
 export default function App() {
   const [employees, setEmployees] = useState<Employee[]>(() => loadEmployees())
@@ -88,16 +89,17 @@ export default function App() {
   const [startContext, setStartContext] = useState<HcmEmployee | null>(null)
   const [startFlow, setStartFlow] = useState<FlowType>('onboarding')
   const [startRefDate, setStartRefDate] = useState('')
+  const [previewHcm, setPreviewHcm] = useState<HcmEmployee | null>(null)
 
   useEffect(() => {
     saveEmployees(employees)
   }, [employees])
 
   useEffect(() => {
-    if (employees.length && !selectedId) {
+    if (employees.length && !selectedId && !previewHcm) {
       setSelectedId(employees[0].id)
     }
-  }, [employees, selectedId])
+  }, [employees, selectedId, previewHcm])
 
   useEffect(() => {
     const d = dialogRef.current
@@ -165,6 +167,7 @@ export default function App() {
     }
     setEmployees((prev) => [emp, ...prev])
     setSelectedId(emp.id)
+    setPreviewHcm(null)
     setWorkspaceTab('gestione')
     setStartContext(null)
   }
@@ -197,6 +200,18 @@ export default function App() {
     setSelectedId((cur) => (cur === id ? null : cur))
   }
 
+  function openEmployeeFlow(employeeId: string) {
+    setPreviewHcm(null)
+    setSelectedId(employeeId)
+    setWorkspaceTab('gestione')
+  }
+
+  function openHcmProfile(hcm: HcmEmployee) {
+    setPreviewHcm(hcm)
+    setSelectedId(null)
+    setWorkspaceTab('gestione')
+  }
+
   return (
     <div className="app">
       <div className="workspace">
@@ -223,6 +238,17 @@ export default function App() {
           >
             Gestione flussi
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={workspaceTab === 'workflow'}
+            aria-controls="panel-workflow"
+            id="tab-workflow"
+            className={`main-tab${workspaceTab === 'workflow' ? ' active' : ''}`}
+            onClick={() => setWorkspaceTab('workflow')}
+          >
+            Workflow
+          </button>
         </nav>
 
         <div
@@ -238,7 +264,7 @@ export default function App() {
               <p className="hcm-hint">
                 Dipendenti presenti in HCM ancora senza flusso avviato dalla piattaforma. Usa{' '}
                 <strong>Avvia</strong> per iniziare l’onboarding (o un flusso di offboarding dal
-                dialog).
+                dialog) oppure <strong>Apri</strong> per vedere il profilo in gestione flussi.
               </p>
             </div>
             <div className="table-scroll">
@@ -271,13 +297,22 @@ export default function App() {
                         <td>{h.role}</td>
                         <td>{h.team}</td>
                         <td className="col-action">
-                          <button
-                            type="button"
-                            className="btn primary btn-compact"
-                            onClick={() => setStartContext(h)}
-                          >
-                            Avvia
-                          </button>
+                          <div className="row-actions">
+                            <button
+                              type="button"
+                              className="btn primary btn-compact"
+                              onClick={() => setStartContext(h)}
+                            >
+                              Avvia
+                            </button>
+                            <button
+                              type="button"
+                              className="btn ghost btn-compact"
+                              onClick={() => openHcmProfile(h)}
+                            >
+                              Apri
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -330,10 +365,7 @@ export default function App() {
                             <button
                               type="button"
                               className="btn primary btn-compact"
-                              onClick={() => {
-                                setSelectedId(emp.id)
-                                setWorkspaceTab('gestione')
-                              }}
+                              onClick={() => openEmployeeFlow(emp.id)}
                             >
                               Apri
                             </button>
@@ -355,53 +387,8 @@ export default function App() {
           hidden={workspaceTab !== 'gestione'}
           className="layout"
         >
-          <aside className="sidebar">
-          <section className="panel list-panel">
-            <h2>Flussi attivi</h2>
-            {employees.length === 0 ? (
-              <p className="muted">
-                Nessun flusso in corso. Nella tab <strong>Da completare</strong> avvia onboarding
-                dall’elenco HCM.
-              </p>
-            ) : (
-              <ul className="emp-list">
-                {employees.map((emp) => {
-                  const { done, total } = progressOf(emp)
-                  const active = emp.id === selectedId
-                  return (
-                    <li key={emp.id}>
-                      <button
-                        type="button"
-                        className={`emp-chip${active ? ' active' : ''}`}
-                        onClick={() => setSelectedId(emp.id)}
-                      >
-                        <span className="chip-name">
-                          {emp.firstName} {emp.lastName}
-                        </span>
-                        <span className={`chip-flow ${emp.flow}`}>
-                          {emp.flow === 'onboarding' ? 'On' : 'Off'}
-                        </span>
-                        <span className="chip-progress">
-                          {done}/{total}
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </section>
-        </aside>
-
           <main className="main">
-          {!selected ? (
-            <div className="empty-main">
-              <p>
-                Seleziona un dipendente da <strong>Flussi attivi</strong> oppure torna alla tab{' '}
-                <strong>Da completare</strong> per avviare o aprire un onboarding.
-              </p>
-            </div>
-          ) : (
+          {selected ? (
             <>
               <div className="detail-head">
                 <div>
@@ -642,8 +629,57 @@ export default function App() {
                 </ul>
               </section>
             </>
+          ) : previewHcm ? (
+            <>
+              <div className="detail-head">
+                <div>
+                  <h2>
+                    {previewHcm.firstName} {previewHcm.lastName}
+                  </h2>
+                  <p className="meta">
+                    <span>{previewHcm.email}</span>
+                    <span>·</span>
+                    <span>{previewHcm.role}</span>
+                    <span>·</span>
+                    <span>{previewHcm.team}</span>
+                    <span>·</span>
+                    <span>Data riferimento: {formatDateIt(previewHcm.referenceDate)}</span>
+                  </p>
+                </div>
+                <div className="head-actions">
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={() => setStartContext(previewHcm)}
+                  >
+                    Avvia onboarding
+                  </button>
+                </div>
+              </div>
+              <section className="steps-section profile-placeholder">
+                <p className="steps-intro">
+                  Profilo anagrafico da HCM. Nessun flusso onboarding o offboarding è ancora stato
+                  avviato per questa persona.
+                </p>
+              </section>
+            </>
+          ) : (
+            <div className="empty-main">
+              <p>
+                Torna alla tab <strong>Da completare</strong> per avviare o aprire un onboarding.
+              </p>
+            </div>
           )}
           </main>
+        </div>
+
+        <div
+          id="panel-workflow"
+          role="tabpanel"
+          aria-labelledby="tab-workflow"
+          hidden={workspaceTab !== 'workflow'}
+        >
+          <WorkflowTab />
         </div>
       </div>
 
