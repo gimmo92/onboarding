@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   MOCK_COMPANIES,
   MOCK_ROLES,
@@ -73,6 +73,7 @@ export default function WorkflowTab() {
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([])
   const [workflowsReady, setWorkflowsReady] = useState(false)
   const [storageError, setStorageError] = useState<string | null>(null)
+  const workflowsPersistReady = useRef(false)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [wizardStep, setWizardStep] = useState<WizardStep>(1)
   const [draft, setDraft] = useState<WizardDraft>(createEmptyDraft)
@@ -100,10 +101,14 @@ export default function WorkflowTab() {
 
   useEffect(() => {
     if (!workflowsReady) return
+    if (!workflowsPersistReady.current) {
+      workflowsPersistReady.current = true
+      return
+    }
 
-    void saveWorkflowDefinitions(workflows).then((saved) => {
-      if (!saved) {
-        setStorageError('Salvataggio workflow non riuscito.')
+    void saveWorkflowDefinitions(workflows).then((result) => {
+      if (!result.ok) {
+        setStorageError(result.error ?? 'Salvataggio workflow non riuscito.')
       }
     })
   }, [workflows, workflowsReady])

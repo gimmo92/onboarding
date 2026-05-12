@@ -93,6 +93,7 @@ export default function App() {
   const [startFlow, setStartFlow] = useState<FlowType>('onboarding')
   const [startRefDate, setStartRefDate] = useState('')
   const [previewHcm, setPreviewHcm] = useState<HcmEmployee | null>(null)
+  const employeesPersistReady = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -116,10 +117,14 @@ export default function App() {
 
   useEffect(() => {
     if (!employeesReady) return
+    if (!employeesPersistReady.current) {
+      employeesPersistReady.current = true
+      return
+    }
 
-    void saveEmployees(employees).then((saved) => {
-      if (!saved) {
-        setStorageError('Salvataggio dati non riuscito.')
+    void saveEmployees(employees).then((result) => {
+      if (!result.ok) {
+        setStorageError(result.error ?? 'Salvataggio dati non riuscito.')
       }
     })
   }, [employees, employeesReady])
@@ -296,7 +301,9 @@ export default function App() {
           </button>
         </nav>
 
-        {storageError ? <p className="document-upload-error">{storageError}</p> : null}
+        {workspaceTab === 'da_completare' && storageError ? (
+          <p className="document-upload-error">{storageError}</p>
+        ) : null}
 
         {workspaceTab === 'da_completare' ? (
         <div

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { JSONContent } from '@tiptap/core'
 import DocumentTemplateEditor from './DocumentTemplateEditor'
 import {
@@ -33,6 +33,7 @@ export default function DocumentsTab() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [storageError, setStorageError] = useState<string | null>(null)
+  const documentsPersistReady = useRef(false)
   const editingTemplate =
     editorMode.kind === 'edit'
       ? (documents.find((document) => document.id === editorMode.templateId) ?? null)
@@ -74,10 +75,14 @@ export default function DocumentsTab() {
 
   useEffect(() => {
     if (!documentsReady) return
+    if (!documentsPersistReady.current) {
+      documentsPersistReady.current = true
+      return
+    }
 
-    void saveDocumentTemplates(documents).then((saved) => {
-      if (!saved) {
-        setStorageError('Salvataggio modelli non riuscito.')
+    void saveDocumentTemplates(documents).then((result) => {
+      if (!result.ok) {
+        setStorageError(result.error ?? 'Salvataggio modelli non riuscito.')
       }
     })
   }, [documents, documentsReady])
@@ -147,8 +152,8 @@ export default function DocumentsTab() {
       }
 
       const saved = await saveDocumentTemplates(nextDocuments)
-      if (!saved) {
-        setSaveError('Salvataggio non riuscito. Verifica la connessione a Supabase e riprova.')
+      if (!saved.ok) {
+        setSaveError(saved.error ?? 'Salvataggio non riuscito. Verifica la connessione a Supabase e riprova.')
         return
       }
 

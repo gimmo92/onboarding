@@ -1,5 +1,5 @@
 import type { Employee } from './types'
-import { loadCollection, saveCollection } from './lib/collectionStorage'
+import { loadCollection, saveCollection, type PersistResult } from './lib/collectionStorage'
 
 const TABLE = 'onboarding_employees'
 const KEY = 'hr-on-offboarding:v1'
@@ -27,6 +27,6 @@ export function loadEmployees(): Promise<Employee[]> {
   return loadCollection(TABLE, KEY, isEmployee)
 }
 
-export function saveEmployees(list: Employee[]): Promise<boolean> {
+export function saveEmployees(list: Employee[]): Promise<PersistResult> {
   return saveCollection(TABLE, KEY, list, isEmployee)
 }

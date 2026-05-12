@@ -5,6 +5,15 @@ type PayloadRow = {
   payload: unknown
 }
 
+export type PersistResult = {
+  ok: boolean
+  error?: string
+}
+
+function formatSupabaseError(error: { message?: string; code?: string; details?: string }): string {
+  return [error.message, error.code, error.details].filter(Boolean).join(' · ')
+}
+
 function readLocalCollection<T>(storageKey: string, isValid: (value: unknown) => value is T): T[] {
   try {
     const raw = localStorage.getItem(storageKey)
@@ -64,7 +73,7 @@ export async function loadCollection<T extends { id: string }>(
 
   if (localItems.length > 0) {
     const migrated = await saveCollection(table, storageKey, localItems, isValid)
-    return migrated ? localItems : []
+    return migrated.ok ? localItems : []
   }
 
   return []
@@ -75,12 +84,12 @@ export async function saveCollection<T extends { id: string }>(
   storageKey: string,
   items: T[],
   isValid: (value: unknown) => value is T
-): Promise<boolean> {
+): Promise<PersistResult> {
   const validItems = items.filter((item) => isValid(item))
   const localSaved = writeLocalCollection(storageKey, validItems)
   const client = getSupabaseClient()
   if (!client) {
-    return localSaved
+    return localSaved ? { ok: true } : { ok: false, error: 'Salvataggio locale non riuscito.' }
   }
 
   const rows = validItems.map((item) => ({
@@ -91,8 +100,9 @@ export async function saveCollection<T extends { id: string }>(
 
   const { data: existing, error: existingError } = await client.from(table).select('id')
   if (existingError) {
+    const error = formatSupabaseError(existingError)
     console.error(`Errore lettura ${table}`, existingError)
-    return false
+    return { ok: false, error }
   }
 
   const nextIds = new Set(validItems.map((item) => item.id))
@@ -103,18 +113,20 @@ export async function saveCollection<T extends { id: string }>(
   if (staleIds.length > 0) {
     const { error: deleteError } = await client.from(table).delete().in('id', staleIds)
     if (deleteError) {
+      const error = formatSupabaseError(deleteError)
       console.error(`Errore eliminazione ${table}`, deleteError)
-      return false
+      return { ok: false, error }
     }
   }
 
   if (rows.length > 0) {
-    const { error: upsertError } = await client.from(table).upsert(rows, { onConflict: 'id' })
+    const { error: upsertError } = await client.from(table).upsert(rows)
     if (upsertError) {
+      const error = formatSupabaseError(upsertError)
       console.error(`Errore salvataggio ${table}`, upsertError)
-      return false
+      return { ok: false, error }
     }
   }
 
-  return true
+  return { ok: true }
 }

@@ -1,5 +1,5 @@
 import type { WorkflowDefinition } from './workflowBuilder'
-import { loadCollection, saveCollection } from './lib/collectionStorage'
+import { loadCollection, saveCollection, type PersistResult } from './lib/collectionStorage'
 
 const TABLE = 'onboarding_workflows'
 const KEY = 'hr-workflow-templates:v1'
@@ -24,6 +24,6 @@ export function loadWorkflowDefinitions(): Promise<WorkflowDefinition[]> {
   return loadCollection(TABLE, KEY, isWorkflowDefinition)
 }
 
-export function saveWorkflowDefinitions(list: WorkflowDefinition[]): Promise<boolean> {
+export function saveWorkflowDefinitions(list: WorkflowDefinition[]): Promise<PersistResult> {
   return saveCollection(TABLE, KEY, list, isWorkflowDefinition)
 }

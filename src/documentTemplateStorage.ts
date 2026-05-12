@@ -1,5 +1,5 @@
 import type { DocumentTemplate, DocumentTemplateVersion } from './documentTemplates'
-import { loadCollection, saveCollection } from './lib/collectionStorage'
+import { loadCollection, saveCollection, type PersistResult } from './lib/collectionStorage'
 
 const TABLE = 'onboarding_document_templates'
 const KEY = 'hr-document-templates:v2'
@@ -62,11 +62,11 @@ export function loadDocumentTemplates(): Promise<DocumentTemplate[]> {
     }
 
     const migrated = await saveDocumentTemplates(legacy)
-    return migrated ? legacy : templates
+    return migrated.ok ? legacy : templates
   })
 }
 
-export function saveDocumentTemplates(list: DocumentTemplate[]): Promise<boolean> {
+export function saveDocumentTemplates(list: DocumentTemplate[]): Promise<PersistResult> {
   return saveCollection(TABLE, KEY, list, isDocumentTemplate)
 }
 
