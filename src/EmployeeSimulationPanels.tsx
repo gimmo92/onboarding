@@ -210,6 +210,9 @@ export default function EmployeeSimulationPanels({
               className={`admin-task-cell ${step.status}`}
               aria-current={step.status === 'in_progress' ? 'step' : undefined}
             >
+              <div className="admin-task-cell-kind">
+                <span className="badge task">{labelKind(step.kind)}</span>
+              </div>
               <span className="admin-task-cell-marker" aria-hidden>
                 {step.status === 'completed' ? (
                   <svg viewBox="0 0 20 20">
@@ -224,7 +227,6 @@ export default function EmployeeSimulationPanels({
               </span>
               <div className="admin-task-cell-body">
                 <div className="admin-task-cell-head">
-                  <span className="badge task">{labelKind(step.kind)}</span>
                   <strong>{step.title}</strong>
                   <span className={`pill status-${step.status}`}>{statusLabel(step.status)}</span>
                 </div>

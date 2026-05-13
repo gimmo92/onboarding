@@ -14,7 +14,7 @@ import WorkflowTab from './WorkflowTab'
 import DocumentsTab from './DocumentsTab'
 import UserViewTab from './UserViewTab'
 import EmployeeSimulationPanels from './EmployeeSimulationPanels'
-import { completionAttachments } from './workflowStepCompletion'
+import { completionAttachments, applyDemoGiuliaOnboardingProgress } from './workflowStepCompletion'
 
 function newEmployeeId(): string {
   return crypto.randomUUID()
@@ -110,7 +110,7 @@ export default function App() {
     loadEmployees()
       .then((list) => {
         if (!active) return
-        setEmployees(list)
+        setEmployees(list.map(applyDemoGiuliaOnboardingProgress))
         setEmployeesReady(true)
       })
       .catch(() => {
@@ -233,7 +233,7 @@ export default function App() {
       createdAt: now,
       steps: stepsForFlow(startFlow),
     }
-    setEmployees((prev) => [emp, ...prev])
+    setEmployees((prev) => [applyDemoGiuliaOnboardingProgress(emp), ...prev])
     setSelectedId(emp.id)
     setPreviewHcm(null)
     setWorkspaceTab('da_completare')
@@ -562,28 +562,6 @@ export default function App() {
                       ))}
                     </ol>
                   </section>
-                  <details className="hr-sim-details panel">
-                    <summary className="hr-sim-details-summary">
-                      Simulazione azioni dipendente (test)
-                    </summary>
-                    <p className="steps-intro hr-sim-details-intro">
-                      Sezione opzionale per simulare firme, corsi e attività come farebbe il
-                      dipendente nell&apos;app.
-                    </p>
-                    <EmployeeSimulationPanels
-                      employee={selected}
-                      openTask={openTask}
-                      documentSteps={documentSteps}
-                      trainingSteps={trainingSteps}
-                      taskSteps={taskSteps}
-                      setOpenTaskId={setOpenTaskId}
-                      patchStep={patchStep}
-                      setSignContext={setSignContext}
-                      labelKind={labelKind}
-                      statusLabel={statusLabel}
-                      formatDateTimeIt={formatDateTimeIt}
-                    />
-                  </details>
                 </>
               ) : (
                 <EmployeeSimulationPanels

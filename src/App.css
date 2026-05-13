@@ -100,6 +100,10 @@
   margin-top: 0.65rem;
 }
 
+#panel-da-completare .da-completare-home section.panel + section.panel {
+  margin-top: 1.75rem;
+}
+
 .col-progress {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -557,6 +561,10 @@
   box-shadow: var(--shadow-sm);
 }
 
+.admin-task-cell-kind {
+  grid-column: 1 / -1;
+}
+
 .admin-task-cell.completed {
   border-color: color-mix(in srgb, var(--ok) 35%, var(--border));
   background: var(--ok-bg);
@@ -606,13 +614,14 @@
 .admin-task-cell-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.45rem 0.75rem;
 }
 
 .admin-task-cell-head strong {
   flex: 1;
-  min-width: 120px;
+  min-width: 0;
   color: var(--text-h);
 }
 
@@ -1186,6 +1195,10 @@
   gap: 1rem;
 }
 
+.documents-tab section.documents-panel + section.documents-panel {
+  margin-top: 1.75rem;
+}
+
 .documents-head {
   display: flex;
   flex-wrap: wrap;
@@ -1573,6 +1586,31 @@
   margin-bottom: 0.5rem;
 }
 
+.user-activity-runner-block--sign {
+  gap: 0.85rem;
+}
+
+.user-doc-preview {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-2);
+  height: min(58vh, 520px);
+  min-height: 280px;
+}
+
+.user-doc-preview-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+  border: 0;
+  display: block;
+}
+
+.user-doc-preview-fallback {
+  margin: 0;
+}
+
 .user-activity-runner-hint {
   margin: 0;
   font-size: 0.85rem;
@@ -1770,22 +1808,6 @@
   gap: 0.5rem;
 }
 
-.hr-sim-details {
-  margin-top: 1rem;
-}
-
-.hr-sim-details-summary {
-  font-weight: 700;
-  cursor: pointer;
-  color: var(--text-h);
-  padding: 0.35rem 0;
-}
-
-.hr-sim-details-intro {
-  margin-top: 0.5rem;
-  max-width: 58ch;
-}
-
 .hr-remind-note,
 .hr-detail-empty {
   font-size: 0.82rem;
@@ -1866,16 +1888,6 @@
   align-items: flex-start;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--border);
-}
-
-.user-workflow-kicker {
-  margin: 0 0 0.25rem;
-  font-family: var(--paragraph-font);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #2152ff;
 }
 
 .user-workflow-card-head h3 {

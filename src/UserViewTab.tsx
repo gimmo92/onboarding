@@ -10,11 +10,14 @@ type UserFlowStep = {
   title: string
   description: string
   status: UserFlowStepStatus
+  /** Anteprima PDF inline (firma sotto). */
+  documentPdfUrl?: string
 }
 
+const DEMO_CONTRACT_PDF =
+  'https://tryspark.co/wp-content/uploads/2026/05/test-contratto.pdf'
+
 const EXAMPLE_WORKFLOW = {
-  name: 'Onboarding Product Design',
-  flowLabel: 'Onboarding',
   referenceDateLabel: '15 mag 2026',
   role: 'Product Designer',
   team: 'Design',
@@ -27,6 +30,7 @@ const INITIAL_STEPS: UserFlowStep[] = [
     title: 'Firma contratto di lavoro',
     description: 'Leggi e accetta il contratto individuale prima dell’ingresso.',
     status: 'pending',
+    documentPdfUrl: DEMO_CONTRACT_PDF,
   },
   {
     id: 'step-id',
@@ -257,20 +261,46 @@ function ActivityDetailPanel({
       <p className="user-activity-runner-desc">{step.description}</p>
 
       {step.kind === 'document_sign' ? (
-        <div className="user-activity-runner-block">
-          <button
-            type="button"
-            className="btn primary"
-            onClick={() =>
-              openDemoDocument(step.title, step.description)
-            }
-          >
-            Apri documento in nuova scheda
-          </button>
-          <SignatureCanvas key={step.id} onChange={setSignOk} />
-          <p className="user-activity-runner-hint">
-            Apri il documento, leggilo nella nuova scheda, poi firma nell’area qui sopra.
-          </p>
+        <div className="user-activity-runner-block user-activity-runner-block--sign">
+          {step.documentPdfUrl ? (
+            <>
+              <div className="user-doc-preview">
+                <iframe
+                  title={`Anteprima documento: ${step.title}`}
+                  src={step.documentPdfUrl}
+                  className="user-doc-preview-frame"
+                />
+              </div>
+              <p className="user-activity-runner-hint">
+                Scorri il documento qui sopra, poi traccia la firma digitale nell’area sotto.
+              </p>
+              <SignatureCanvas key={step.id} onChange={setSignOk} />
+              <p className="user-doc-preview-fallback">
+                <a
+                  href={step.documentPdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn ghost btn-compact"
+                >
+                  Apri PDF in nuova scheda
+                </a>
+              </p>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => openDemoDocument(step.title, step.description)}
+              >
+                Apri documento in nuova scheda
+              </button>
+              <p className="user-activity-runner-hint">
+                Apri il documento, leggilo nella nuova scheda, poi firma nell’area qui sotto.
+              </p>
+              <SignatureCanvas key={step.id} onChange={setSignOk} />
+            </>
+          )}
         </div>
       ) : null}
 
@@ -382,8 +412,7 @@ export default function UserViewTab() {
         <article className="user-workflow-card">
           <header className="user-workflow-card-head">
             <div>
-              <p className="user-workflow-kicker">{EXAMPLE_WORKFLOW.flowLabel}</p>
-              <h3>{EXAMPLE_WORKFLOW.name}</h3>
+              <h3 className="user-workflow-page-title">Le tue attività da completare</h3>
               <p className="user-workflow-meta">
                 <span>{EXAMPLE_WORKFLOW.role}</span>
                 <span aria-hidden>·</span>
@@ -424,6 +453,11 @@ export default function UserViewTab() {
                       className={`admin-task-cell ${step.status}`}
                       aria-current={step.status === 'in_progress' ? 'step' : undefined}
                     >
+                      <div className="admin-task-cell-kind">
+                        <span className={`badge ${stepKindBadgeClass(step.kind)}`}>
+                          {blueprintStepKindLabel(step.kind)}
+                        </span>
+                      </div>
                       <span className="admin-task-cell-marker" aria-hidden>
                         {step.status === 'completed' ? (
                           <svg viewBox="0 0 20 20">
@@ -438,9 +472,6 @@ export default function UserViewTab() {
                       </span>
                       <div className="admin-task-cell-body">
                         <div className="admin-task-cell-head">
-                          <span className={`badge ${stepKindBadgeClass(step.kind)}`}>
-                            {blueprintStepKindLabel(step.kind)}
-                          </span>
                           <strong>{step.title}</strong>
                           <span className={`pill status-${step.status}`}>
                             {stepStatusLabel(step.status)}
