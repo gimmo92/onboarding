@@ -88,6 +88,18 @@
   display: none !important;
 }
 
+#panel-da-completare .da-completare-home section.panel {
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+#panel-da-completare .da-completare-home .table-scroll {
+  margin-top: 0.65rem;
+}
+
 .col-progress {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -1828,6 +1840,22 @@
   border-radius: 14px;
   background: var(--card);
   box-shadow: var(--shadow-sm);
+}
+
+.user-view-tab .user-workflow-card {
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.user-view-tab > section.panel.user-view-panel {
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .user-workflow-card-head {

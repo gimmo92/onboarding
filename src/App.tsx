@@ -635,7 +635,7 @@ export default function App() {
           ) : null}
             </main>
           ) : (
-            <>
+            <div className="da-completare-home">
               <section className="hcm-panel panel">
                 <div className="hcm-head">
                   <h2>Da avviare onboarding</h2>
@@ -747,7 +747,7 @@ export default function App() {
                   </table>
                 </div>
               </section>
-            </>
+            </div>
           )}
         </div>
         ) : workspaceTab === 'workflow' ? (
