@@ -80,8 +80,17 @@ function stepKindBadgeClass(kind: WorkflowBlueprintStepKind): string {
   }
 }
 
+function canStartStepAtIndex(steps: UserFlowStep[], index: number): boolean {
+  const step = steps[index]
+  if (!step || step.status !== 'pending') return false
+  for (let i = 0; i < index; i++) {
+    if (steps[i].status !== 'completed') return false
+  }
+  if (steps.some((s, j) => j !== index && s.status === 'in_progress')) return false
+  return true
+}
+
 export default function UserViewTab() {
-  const [started, setStarted] = useState(false)
   const [steps, setSteps] = useState<UserFlowStep[]>(INITIAL_STEPS)
 
   const progress = useMemo(() => {
@@ -91,32 +100,22 @@ export default function UserViewTab() {
     return { done, total, pct }
   }, [steps])
 
-  function startWorkflow() {
-    setStarted(true)
-    setSteps((current) =>
-      current.map((step, index) =>
-        index === 0 ? { ...step, status: 'in_progress' } : step
+  function startStep(stepId: string) {
+    setSteps((current) => {
+      const index = current.findIndex((step) => step.id === stepId)
+      if (index < 0 || !canStartStepAtIndex(current, index)) return current
+      return current.map((step) =>
+        step.id === stepId ? { ...step, status: 'in_progress' as const } : step
       )
-    )
+    })
   }
 
   function completeStep(stepId: string) {
-    setSteps((current) => {
-      const index = current.findIndex((step) => step.id === stepId)
-      if (index < 0) return current
-
-      const next = current.map((step, stepIndex) => {
-        if (step.id === stepId) {
-          return { ...step, status: 'completed' as const }
-        }
-        if (stepIndex === index + 1 && step.status === 'pending') {
-          return { ...step, status: 'in_progress' as const }
-        }
-        return step
-      })
-
-      return next
-    })
+    setSteps((current) =>
+      current.map((step) =>
+        step.id === stepId ? { ...step, status: 'completed' as const } : step
+      )
+    )
   }
 
   return (
@@ -147,56 +146,77 @@ export default function UserViewTab() {
                   aria-hidden
                 />
               </div>
-              {!started ? (
-                <button type="button" className="btn primary" onClick={startWorkflow}>
-                  Inizia workflow
-                </button>
-              ) : null}
             </div>
           </header>
 
-          <ol className="user-completion-steps" aria-label="Step del workflow">
-            {steps.map((step, index) => (
-              <li
-                key={step.id}
-                className={`user-completion-step ${step.status}`}
-                aria-current={step.status === 'in_progress' ? 'step' : undefined}
-              >
-                <span className="user-completion-marker" aria-hidden>
-                  {step.status === 'completed' ? (
-                    <svg viewBox="0 0 20 20">
-                      <path
-                        fill="currentColor"
-                        d="M7.75 13.19 4.53 9.97l1.06-1.06 2.16 2.16 6.16-6.16 1.06 1.06-7.22 7.22Z"
-                      />
-                    </svg>
-                  ) : (
-                    index + 1
-                  )}
-                </span>
-                <div className="user-completion-body">
-                  <div className="user-completion-title-row">
-                    <span className={`badge ${stepKindBadgeClass(step.kind)}`}>
-                      {blueprintStepKindLabel(step.kind)}
-                    </span>
-                    <strong>{step.title}</strong>
-                    <span className={`pill status-${step.status}`}>
-                      {stepStatusLabel(step.status)}
-                    </span>
+          <p className="steps-intro user-activity-steps-intro">
+            Ogni passaggio si avvia dalla propria scheda, in ordine: termina quello in corso prima
+            di aprire il successivo.
+          </p>
+
+          <ol className="admin-task-grid user-activity-grid" aria-label="Le tue attività">
+            {steps.map((step, index) => {
+              const startable = canStartStepAtIndex(steps, index)
+              const startTitle = !startable
+                ? steps.some((s, j) => j !== index && s.status === 'in_progress')
+                  ? 'Termina prima l’attività in corso.'
+                  : 'Completa i passaggi precedenti in ordine.'
+                : undefined
+              return (
+                <li
+                  key={step.id}
+                  className={`admin-task-cell ${step.status}`}
+                  aria-current={step.status === 'in_progress' ? 'step' : undefined}
+                >
+                  <span className="admin-task-cell-marker" aria-hidden>
+                    {step.status === 'completed' ? (
+                      <svg viewBox="0 0 20 20">
+                        <path
+                          fill="currentColor"
+                          d="M7.75 13.19 4.53 9.97l1.06-1.06 2.16 2.16 6.16-6.16 1.06 1.06-7.22 7.22Z"
+                        />
+                      </svg>
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
+                  <div className="admin-task-cell-body">
+                    <div className="admin-task-cell-head">
+                      <span className={`badge ${stepKindBadgeClass(step.kind)}`}>
+                        {blueprintStepKindLabel(step.kind)}
+                      </span>
+                      <strong>{step.title}</strong>
+                      <span className={`pill status-${step.status}`}>
+                        {stepStatusLabel(step.status)}
+                      </span>
+                    </div>
+                    <p className="admin-task-cell-desc">{step.description}</p>
+                    <div className="admin-task-cell-actions">
+                      {step.status === 'pending' && (
+                        <button
+                          type="button"
+                          className="btn primary"
+                          disabled={!startable}
+                          title={startTitle}
+                          onClick={() => startStep(step.id)}
+                        >
+                          Avvia attività
+                        </button>
+                      )}
+                      {step.status === 'in_progress' && (
+                        <button
+                          type="button"
+                          className="btn primary"
+                          onClick={() => completeStep(step.id)}
+                        >
+                          Segna completato
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <p className="user-completion-desc">{step.description}</p>
-                  {started && step.status === 'in_progress' ? (
-                    <button
-                      type="button"
-                      className="btn primary user-completion-action"
-                      onClick={() => completeStep(step.id)}
-                    >
-                      Segna completato
-                    </button>
-                  ) : null}
-                </div>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ol>
         </article>
       </section>
