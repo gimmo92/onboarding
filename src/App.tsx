@@ -613,9 +613,6 @@ export default function App() {
 
               <section className="steps-section">
                 <h3 className="steps-title">Altre attività</h3>
-                <p className="steps-intro">
-                  Puoi avviare e completare le attività in qualsiasi ordine, dalla scheda di ciascuna.
-                </p>
                 <ol className="admin-task-grid" aria-label="Attività operative">
                   {taskSteps.map((step, index) => {
                     return (

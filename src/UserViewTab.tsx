@@ -349,18 +349,17 @@ export default function UserViewTab() {
     [openActivityId, steps]
   )
 
-  function startStep(stepId: string) {
+  function openActivity(stepId: string) {
     setSteps((current) => {
       const step = current.find((s) => s.id === stepId)
-      if (!step || step.status !== 'pending') return current
-      return current.map((s) =>
-        s.id === stepId ? { ...s, status: 'in_progress' as const } : s
-      )
+      if (!step || step.status === 'completed') return current
+      if (step.status === 'pending') {
+        return current.map((s) =>
+          s.id === stepId ? { ...s, status: 'in_progress' as const } : s
+        )
+      }
+      return current
     })
-    setOpenActivityId(stepId)
-  }
-
-  function resumeStep(stepId: string) {
     setOpenActivityId(stepId)
   }
 
@@ -417,11 +416,6 @@ export default function UserViewTab() {
             />
           ) : (
             <>
-              <p className="steps-intro user-activity-steps-intro">
-                Puoi avviare e completare i passaggi in qualsiasi ordine, dalla scheda di
-                ciascuno.
-              </p>
-
               <ol className="admin-task-grid user-activity-grid" aria-label="Le tue attività">
                 {steps.map((step, index) => {
                   return (
@@ -454,22 +448,13 @@ export default function UserViewTab() {
                         </div>
                         <p className="admin-task-cell-desc">{step.description}</p>
                         <div className="admin-task-cell-actions">
-                          {step.status === 'pending' && (
+                          {step.status !== 'completed' && (
                             <button
                               type="button"
                               className="btn primary"
-                              onClick={() => startStep(step.id)}
+                              onClick={() => openActivity(step.id)}
                             >
-                              Avvia attività
-                            </button>
-                          )}
-                          {step.status === 'in_progress' && (
-                            <button
-                              type="button"
-                              className="btn primary"
-                              onClick={() => resumeStep(step.id)}
-                            >
-                              Continua
+                              {step.status === 'pending' ? 'Avvia attività' : 'Continua'}
                             </button>
                           )}
                         </div>
