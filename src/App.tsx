@@ -14,6 +14,7 @@ import WorkflowTab from './WorkflowTab'
 import DocumentsTab from './DocumentsTab'
 import UserViewTab from './UserViewTab'
 import EmployeeSimulationPanels from './EmployeeSimulationPanels'
+import { completionAttachments } from './workflowStepCompletion'
 
 function newEmployeeId(): string {
   return crypto.randomUUID()
@@ -494,247 +495,110 @@ export default function App() {
                 </div>
               </div>
 
-              {openTask && openTask.status !== 'completed' ? (
-                <div className="activity-runner-section">
-                  <section
-                    className="user-activity-runner"
-                    aria-labelledby="task-activity-runner-title"
-                  >
-                    <div className="user-activity-runner-toolbar">
-                      <button type="button" className="btn ghost" onClick={() => setOpenTaskId(null)}>
-                        Torna indietro
-                      </button>
-                    </div>
-                    <h3 id="task-activity-runner-title" className="user-activity-runner-title">
-                      {openTask.title}
-                    </h3>
-                    <p className="user-activity-runner-desc">{openTask.description}</p>
-                    <div className="user-activity-runner-block user-activity-runner-block--activity">
-                      <p className="user-activity-runner-hint">
-                        Esegui l’attività (ticket IT, presenza welcome HR, checklist interna, ecc.).
-                        Quando è stata svolta, conferma il completamento qui sotto.
-                      </p>
-                    </div>
-                    <div className="user-activity-runner-footer">
-                      <button
-                        type="button"
-                        className="btn primary"
-                        onClick={() => {
-                          const ts = new Date().toISOString()
-                          patchStep(selected.id, openTask.id, {
-                            status: 'completed',
-                            ...completionAttachments('task', ts),
-                          })
-                          setOpenTaskId(null)
-                        }}
-                      >
-                        Segna completata
-                      </button>
-                    </div>
-                  </section>
-                </div>
-              ) : (
+              {selected.flow === 'onboarding' ? (
                 <>
-              <section className="steps-section">
-                <h3 className="steps-title">Firma documentale</h3>
-                <p className="steps-intro">
-                  Ogni documento richiede accettazione esplicita; la firma è simulata in
-                  questa demo (integrabile con provider eIDAS / DocuSign).
-                </p>
-                <ul className="step-list">
-                  {documentSteps.map((step) => (
-                    <li key={step.id} className={`step-card ${step.status}`}>
-                      <div className="step-main">
-                        <span className="badge doc">{labelKind(step.kind)}</span>
-                        <div>
-                          <strong>{step.title}</strong>
-                          <p className="step-desc">{step.description}</p>
-                          {step.signedAt && (
-                            <p className="signed-at">
-                              Firmato il {formatDateTimeIt(step.signedAt)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="step-actions">
-                        <span className={`pill status-${step.status}`}>
-                          {statusLabel(step.status)}
-                        </span>
-                        {step.status !== 'completed' && (
-                          <button
-                            type="button"
-                            className="btn primary"
-                            onClick={() =>
-                              setSignContext({ employeeId: selected.id, step })
-                            }
-                          >
-                            Firma documento
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="steps-section">
-                <h3 className="steps-title">Corsi di formazione</h3>
-                <p className="steps-intro">
-                  Avvia il modulo, aggiorna l&apos;avanzamento e completa quando il corso è
-                  concluso (es. quiz superato o registrazione LMS).
-                </p>
-                <ul className="step-list">
-                  {trainingSteps.map((step) => {
-                    const progress = step.trainingProgress ?? 0
-                    return (
-                      <li key={step.id} className={`step-card ${step.status}`}>
-                        <div className="step-main">
-                          <span className="badge train">{labelKind(step.kind)}</span>
-                          <div>
-                            <strong>{step.title}</strong>
-                            {step.estimatedHours != null && (
-                              <span className="hours">
-                                {' '}
-                                · {step.estimatedHours} h stimate
-                              </span>
-                            )}
-                            <p className="step-desc">{step.description}</p>
-                            {step.trainingCompletedAt && (
-                              <p className="signed-at">
-                                Completato il {formatDateTimeIt(step.trainingCompletedAt)}
-                              </p>
+                  <section className="hr-workflow-monitor panel">
+                    <h3 className="steps-title">Vista HR — attività nel workflow</h3>
+                    <p className="steps-intro hr-workflow-intro">
+                      Monitoraggio del percorso del dipendente. Per le attività completate apri il
+                      dettaglio con documenti registrati; per quelle ancora aperte invia un sollecito
+                      via email.
+                    </p>
+                    <ol className="hr-activity-timeline" aria-label="Elenco attività">
+                      {selected.steps.map((step, index) => (
+                        <li key={step.id} className={`hr-activity-card ${step.status}`}>
+                          <div className="hr-activity-card-marker" aria-hidden>
+                            {step.status === 'completed' ? (
+                              <svg viewBox="0 0 20 20" className="hr-activity-check">
+                                <path
+                                  fill="currentColor"
+                                  d="M7.75 13.19 4.53 9.97l1.06-1.06 2.16 2.16 6.16-6.16 1.06 1.06-7.22 7.22Z"
+                                />
+                              </svg>
+                            ) : (
+                              index + 1
                             )}
                           </div>
-                        </div>
-                        <div className="step-actions training-actions">
-                          <span className={`pill status-${step.status}`}>
-                            {statusLabel(step.status)}
-                          </span>
-                          {step.status !== 'completed' && (
-                            <>
-                              {step.status === 'pending' && (
+                          <div className="hr-activity-card-body">
+                            <div className="hr-activity-card-head">
+                              <span
+                                className={`badge ${
+                                  step.kind === 'document'
+                                    ? 'doc'
+                                    : step.kind === 'training'
+                                      ? 'train'
+                                      : 'task'
+                                }`}
+                              >
+                                {labelKind(step.kind)}
+                              </span>
+                              <strong>{step.title}</strong>
+                              <span className={`pill status-${step.status}`}>
+                                {statusLabel(step.status)}
+                              </span>
+                            </div>
+                            <p className="hr-activity-desc">{step.description}</p>
+                            <div className="hr-activity-card-actions">
+                              {step.status === 'completed' ? (
                                 <button
                                   type="button"
                                   className="btn"
-                                  onClick={() =>
-                                    patchStep(selected.id, step.id, {
-                                      status: 'in_progress',
-                                      trainingProgress: 0,
-                                    })
-                                  }
+                                  onClick={() => setDetailStep(step)}
                                 >
-                                  Avvia corso
+                                  Visualizza
                                 </button>
-                              )}
-                              {step.status === 'in_progress' && (
-                                <label className="progress-wrap">
-                                  Avanzamento {progress}%
-                                  <input
-                                    type="range"
-                                    min={0}
-                                    max={100}
-                                    value={progress}
-                                    onChange={(e) =>
-                                      patchStep(selected.id, step.id, {
-                                        trainingProgress: Number(e.target.value),
-                                      })
-                                    }
-                                  />
-                                </label>
-                              )}
-                              {step.status === 'in_progress' && (
+                              ) : (
                                 <button
                                   type="button"
                                   className="btn primary"
-                                  disabled={progress < 100}
-                                  title={
-                                    progress < 100
-                                      ? 'Porta l’avanzamento al 100% per completare'
-                                      : undefined
-                                  }
-                                  onClick={() => {
-                                    const ts = new Date().toISOString()
-                                    patchStep(selected.id, step.id, {
-                                      status: 'completed',
-                                      trainingProgress: 100,
-                                      trainingCompletedAt: ts,
-                                      ...completionAttachments('training', ts),
-                                    })
-                                  }}
+                                  onClick={() => openRemind(step)}
                                 >
-                                  Segna completato
+                                  Sollecita
                                 </button>
                               )}
-                            </>
-                          )}
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-
-              <section className="steps-section">
-                <h3 className="steps-title">Altre attività</h3>
-                <ol className="admin-task-grid" aria-label="Attività operative">
-                  {taskSteps.map((step, index) => {
-                    return (
-                      <li
-                        key={step.id}
-                        className={`admin-task-cell ${step.status}`}
-                        aria-current={step.status === 'in_progress' ? 'step' : undefined}
-                      >
-                        <span className="admin-task-cell-marker" aria-hidden>
-                          {step.status === 'completed' ? (
-                            <svg viewBox="0 0 20 20">
-                              <path
-                                fill="currentColor"
-                                d="M7.75 13.19 4.53 9.97l1.06-1.06 2.16 2.16 6.16-6.16 1.06 1.06-7.22 7.22Z"
-                              />
-                            </svg>
-                          ) : (
-                            index + 1
-                          )}
-                        </span>
-                        <div className="admin-task-cell-body">
-                          <div className="admin-task-cell-head">
-                            <span className="badge task">{labelKind(step.kind)}</span>
-                            <strong>{step.title}</strong>
-                            <span className={`pill status-${step.status}`}>
-                              {statusLabel(step.status)}
-                            </span>
+                            </div>
                           </div>
-                          <p className="admin-task-cell-desc">{step.description}</p>
-                          <div className="admin-task-cell-actions">
-                            {step.status === 'pending' && (
-                              <button
-                                type="button"
-                                className="btn primary"
-                                onClick={() => {
-                                  patchStep(selected.id, step.id, { status: 'in_progress' })
-                                  setOpenTaskId(step.id)
-                                }}
-                              >
-                                Avvia attività
-                              </button>
-                            )}
-                            {step.status === 'in_progress' && (
-                              <button
-                                type="button"
-                                className="btn primary"
-                                onClick={() => setOpenTaskId(step.id)}
-                              >
-                                Continua
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ol>
-              </section>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                  <details className="hr-sim-details panel">
+                    <summary className="hr-sim-details-summary">
+                      Simulazione azioni dipendente (test)
+                    </summary>
+                    <p className="steps-intro hr-sim-details-intro">
+                      Sezione opzionale per simulare firme, corsi e attività come farebbe il
+                      dipendente nell&apos;app.
+                    </p>
+                    <EmployeeSimulationPanels
+                      employee={selected}
+                      openTask={openTask}
+                      documentSteps={documentSteps}
+                      trainingSteps={trainingSteps}
+                      taskSteps={taskSteps}
+                      setOpenTaskId={setOpenTaskId}
+                      patchStep={patchStep}
+                      setSignContext={setSignContext}
+                      labelKind={labelKind}
+                      statusLabel={statusLabel}
+                      formatDateTimeIt={formatDateTimeIt}
+                    />
+                  </details>
                 </>
+              ) : (
+                <EmployeeSimulationPanels
+                  employee={selected}
+                  openTask={openTask}
+                  documentSteps={documentSteps}
+                  trainingSteps={trainingSteps}
+                  taskSteps={taskSteps}
+                  setOpenTaskId={setOpenTaskId}
+                  patchStep={patchStep}
+                  setSignContext={setSignContext}
+                  labelKind={labelKind}
+                  statusLabel={statusLabel}
+                  formatDateTimeIt={formatDateTimeIt}
+                />
               )}
             </>
           ) : previewHcm ? (
@@ -1020,6 +884,130 @@ export default function App() {
             </div>
           </>
         )}
+      </dialog>
+
+      <dialog
+        ref={remindDialogRef}
+        className="sign-dialog hr-remind-dialog"
+        onClose={() => setRemindStep(null)}
+      >
+        {remindStep && selected ? (
+          <>
+            <h4>Invia sollecito email</h4>
+            <p className="dialog-doc-title">
+              Attività: <strong>{remindStep.title}</strong>
+            </p>
+            <label className="wizard-field">
+              A
+              <input type="email" readOnly value={selected.email} />
+            </label>
+            <label className="wizard-field">
+              Oggetto
+              <input
+                type="text"
+                value={remindSubject}
+                onChange={(e) => setRemindSubject(e.target.value)}
+              />
+            </label>
+            <label className="wizard-field">
+              Messaggio
+              <textarea
+                rows={8}
+                value={remindBody}
+                onChange={(e) => setRemindBody(e.target.value)}
+              />
+            </label>
+            <p className="dialog-copy hr-remind-note">
+              Invio simulato: in produzione verrebbe usato il servizio email aziendale (SMTP / API).
+            </p>
+            <div className="dialog-actions">
+              <button type="button" className="btn ghost" onClick={() => setRemindStep(null)}>
+                Annulla
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => {
+                  window.alert(
+                    `Sollecito inviato (demo) a ${selected.email}.\nOggetto: ${remindSubject}`
+                  )
+                  setRemindStep(null)
+                }}
+              >
+                Invia email
+              </button>
+            </div>
+          </>
+        ) : null}
+      </dialog>
+
+      <dialog
+        ref={detailDialogRef}
+        className="sign-dialog hr-detail-dialog"
+        onClose={() => setDetailStep(null)}
+      >
+        {detailStep ? (
+          <>
+            <h4>Dettaglio attività completata</h4>
+            <p className="dialog-doc-title">
+              <span
+                className={`badge ${
+                  detailStep.kind === 'document'
+                    ? 'doc'
+                    : detailStep.kind === 'training'
+                      ? 'train'
+                      : 'task'
+                }`}
+              >
+                {labelKind(detailStep.kind)}
+              </span>{' '}
+              <strong>{detailStep.title}</strong>
+            </p>
+            <p className="dialog-copy">{detailStep.description}</p>
+            {detailStep.signedAt ? (
+              <p className="signed-at">
+                Accettazione registrata il {formatDateTimeIt(detailStep.signedAt)}
+              </p>
+            ) : null}
+            {detailStep.trainingCompletedAt ? (
+              <p className="signed-at">
+                Corso completato il {formatDateTimeIt(detailStep.trainingCompletedAt)}
+              </p>
+            ) : null}
+            {detailStep.trainingProgress != null && detailStep.status === 'completed' ? (
+              <p className="hr-detail-meta">Avanzamento corso: {detailStep.trainingProgress}%</p>
+            ) : null}
+            <h4 className="hr-detail-subtitle">Documenti e allegati</h4>
+            {(detailStep.attachments ?? []).length === 0 ? (
+              <p className="hr-detail-empty">Nessun allegato registrato per questa attività.</p>
+            ) : (
+              <ul className="hr-attachment-list">
+                {(detailStep.attachments ?? []).map((att, i) => (
+                  <li key={`${att.fileName}-${i}`} className="hr-attachment-item">
+                    <div>
+                      <strong>{att.fileName}</strong>
+                      <p className="hr-attachment-meta">
+                        Caricato il {formatDateTimeIt(att.uploadedAt)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn ghost btn-compact"
+                      onClick={() => downloadDemoAttachment(att.fileName, detailStep.title)}
+                    >
+                      Scarica copia dimostrativa
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="dialog-actions">
+              <button type="button" className="btn primary" onClick={() => setDetailStep(null)}>
+                Chiudi
+              </button>
+            </div>
+          </>
+        ) : null}
       </dialog>
     </div>
   )
