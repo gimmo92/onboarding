@@ -64,6 +64,16 @@ function createEmptyDraft(): WizardDraft {
   }
 }
 
+function createDraftFromWorkflow(workflow: WorkflowDefinition): WizardDraft {
+  const scopeType = workflow.scope.type
+  return {
+    name: workflow.name,
+    scopeType,
+    targetIds: scopeType === 'azienda' ? [] : [...workflow.scope.targetIds],
+    steps: workflow.steps.map((step) => ({ ...step })),
+  }
+}
+
 function buildScope(draft: WizardDraft): WorkflowScope {
   if (draft.scopeType === 'azienda') return { type: 'azienda' }
   return { type: draft.scopeType, targetIds: draft.targetIds }
@@ -79,6 +89,7 @@ export default function WorkflowTab() {
   const [storageError, setStorageError] = useState<string | null>(null)
   const workflowsPersistReady = useRef(false)
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [editingWorkflowId, setEditingWorkflowId] = useState<string | null>(null)
   const [wizardStep, setWizardStep] = useState<WizardStep>(1)
   const [draft, setDraft] = useState<WizardDraft>(createEmptyDraft)
   const [draftStep, setDraftStep] = useState(EMPTY_DRAFT_STEP)
@@ -167,7 +178,16 @@ export default function WorkflowTab() {
     (!draftStepNeedsRequiredDocument || Boolean(draftStep.requiredDocument.trim()))
 
   function openWizard() {
+    setEditingWorkflowId(null)
     setDraft(createEmptyDraft())
+    setDraftStep(EMPTY_DRAFT_STEP)
+    setWizardStep(1)
+    setWizardOpen(true)
+  }
+
+  function openWizardForEdit(workflow: WorkflowDefinition) {
+    setEditingWorkflowId(workflow.id)
+    setDraft(createDraftFromWorkflow(workflow))
     setDraftStep(EMPTY_DRAFT_STEP)
     setWizardStep(1)
     setWizardOpen(true)
@@ -175,6 +195,7 @@ export default function WorkflowTab() {
 
   function closeWizard() {
     setWizardOpen(false)
+    setEditingWorkflowId(null)
     setWizardStep(1)
     setDraft(createEmptyDraft())
     setDraftStep(EMPTY_DRAFT_STEP)
@@ -231,17 +252,37 @@ export default function WorkflowTab() {
   function saveWorkflow() {
     if (!canSaveWorkflow) return
 
-    const workflow: WorkflowDefinition = {
-      id: newId(),
+    const payload = {
       name: draft.name.trim(),
       scope: buildScope(draft),
       steps: draft.steps,
-      createdAt: new Date().toISOString(),
     }
 
-    setWorkflows((current) => [workflow, ...current])
+    if (editingWorkflowId) {
+      setWorkflows((current) =>
+        current.map((workflow) =>
+          workflow.id === editingWorkflowId
+            ? {
+                ...workflow,
+                ...payload,
+              }
+            : workflow
+        )
+      )
+    } else {
+      const workflow: WorkflowDefinition = {
+        id: newId(),
+        ...payload,
+        createdAt: new Date().toISOString(),
+      }
+
+      setWorkflows((current) => [workflow, ...current])
+    }
+
     closeWizard()
   }
+
+  const isEditingWorkflow = editingWorkflowId !== null
 
   return (
     <div className="workflow-tab">
@@ -479,7 +520,7 @@ export default function WorkflowTab() {
                     disabled={!canSaveWorkflow}
                     onClick={saveWorkflow}
                   >
-                    Salva workflow
+                    {isEditingWorkflow ? 'Salva modifiche' : 'Salva workflow'}
                   </button>
                 </div>
               </div>
@@ -515,6 +556,9 @@ export default function WorkflowTab() {
                       <th scope="col">Ambito</th>
                       <th scope="col">Step</th>
                       <th scope="col">Creato</th>
+                      <th scope="col" className="col-action">
+                        <span className="sr-only">Azione</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -539,6 +583,15 @@ export default function WorkflowTab() {
                             month: 'short',
                             year: 'numeric',
                           })}
+                        </td>
+                        <td className="col-action">
+                          <button
+                            type="button"
+                            className="btn ghost btn-compact"
+                            onClick={() => openWizardForEdit(workflow)}
+                          >
+                            Modifica
+                          </button>
                         </td>
                       </tr>
                     ))}

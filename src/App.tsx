@@ -73,6 +73,16 @@ function progressOf(emp: Employee): { done: number; total: number } {
   return { done, total }
 }
 
+function canStartTaskAtIndex(tasks: WorkflowStep[], index: number): boolean {
+  const step = tasks[index]
+  if (!step || step.status !== 'pending') return false
+  for (let i = 0; i < index; i++) {
+    if (tasks[i].status !== 'completed') return false
+  }
+  if (tasks.some((s, j) => j !== index && s.status === 'in_progress')) return false
+  return true
+}
+
 type WorkspaceTab = 'da_completare' | 'workflow' | 'documenti' | 'vista_utente'
 
 export default function App() {
@@ -565,46 +575,76 @@ export default function App() {
 
               <section className="steps-section">
                 <h3 className="steps-title">Altre attività</h3>
-                <ul className="step-list">
-                  {taskSteps.map((step) => (
-                    <li key={step.id} className={`step-card ${step.status}`}>
-                      <div className="step-main">
-                        <span className="badge task">{labelKind(step.kind)}</span>
-                        <div>
-                          <strong>{step.title}</strong>
-                          <p className="step-desc">{step.description}</p>
-                        </div>
-                      </div>
-                      <div className="step-actions">
-                        <span className={`pill status-${step.status}`}>
-                          {statusLabel(step.status)}
+                <p className="steps-intro">
+                  Ogni attività si avvia dalla propria scheda, in ordine: termina quella in corso
+                  prima di iniziare la successiva.
+                </p>
+                <ol className="admin-task-grid" aria-label="Attività operative">
+                  {taskSteps.map((step, index) => {
+                    const startable = canStartTaskAtIndex(taskSteps, index)
+                    const startTitle = !startable
+                      ? taskSteps.some((s, j) => j !== index && s.status === 'in_progress')
+                        ? 'Termina prima l’attività in corso.'
+                        : 'Completa le attività precedenti in ordine.'
+                      : undefined
+                    return (
+                      <li
+                        key={step.id}
+                        className={`admin-task-cell ${step.status}`}
+                        aria-current={step.status === 'in_progress' ? 'step' : undefined}
+                      >
+                        <span className="admin-task-cell-marker" aria-hidden>
+                          {step.status === 'completed' ? (
+                            <svg viewBox="0 0 20 20">
+                              <path
+                                fill="currentColor"
+                                d="M7.75 13.19 4.53 9.97l1.06-1.06 2.16 2.16 6.16-6.16 1.06 1.06-7.22 7.22Z"
+                              />
+                            </svg>
+                          ) : (
+                            index + 1
+                          )}
                         </span>
-                        {step.status === 'pending' && (
-                          <button
-                            type="button"
-                            className="btn"
-                            onClick={() =>
-                              patchStep(selected.id, step.id, { status: 'in_progress' })
-                            }
-                          >
-                            Inizia
-                          </button>
-                        )}
-                        {step.status === 'in_progress' && (
-                          <button
-                            type="button"
-                            className="btn primary"
-                            onClick={() =>
-                              patchStep(selected.id, step.id, { status: 'completed' })
-                            }
-                          >
-                            Completata
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                        <div className="admin-task-cell-body">
+                          <div className="admin-task-cell-head">
+                            <span className="badge task">{labelKind(step.kind)}</span>
+                            <strong>{step.title}</strong>
+                            <span className={`pill status-${step.status}`}>
+                              {statusLabel(step.status)}
+                            </span>
+                          </div>
+                          <p className="admin-task-cell-desc">{step.description}</p>
+                          <div className="admin-task-cell-actions">
+                            {step.status === 'pending' && (
+                              <button
+                                type="button"
+                                className="btn primary"
+                                disabled={!startable}
+                                title={startTitle}
+                                onClick={() =>
+                                  patchStep(selected.id, step.id, { status: 'in_progress' })
+                                }
+                              >
+                                Avvia attività
+                              </button>
+                            )}
+                            {step.status === 'in_progress' && (
+                              <button
+                                type="button"
+                                className="btn primary"
+                                onClick={() =>
+                                  patchStep(selected.id, step.id, { status: 'completed' })
+                                }
+                              >
+                                Segna completata
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ol>
               </section>
             </>
           ) : previewHcm ? (
@@ -790,7 +830,7 @@ export default function App() {
       >
         {startContext && (
           <>
-            <h4>Avvia workflow</h4>
+            <h4>Nuovo dipendente in flusso</h4>
             <p className="dialog-doc-title">
               <strong>
                 {startContext.firstName} {startContext.lastName}
@@ -844,7 +884,7 @@ export default function App() {
                 disabled={!startRefDate}
                 onClick={confirmStartWorkflow}
               >
-                Avvia flusso
+                Conferma e crea
               </button>
             </div>
           </>
