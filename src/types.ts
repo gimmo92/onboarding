@@ -2,6 +2,11 @@ export type FlowType = 'onboarding' | 'offboarding'
 
 export type StepStatus = 'pending' | 'in_progress' | 'completed'
 
+export type StepAttachment = {
+  fileName: string
+  uploadedAt: string
+}
+
 export type StepKind = 'document' | 'training' | 'task'
 
 export type WorkflowStep = {
@@ -16,6 +21,8 @@ export type WorkflowStep = {
   trainingProgress?: number
   trainingCompletedAt?: string
   estimatedHours?: number
+  /** Allegati registrati al completamento (vista HR) */
+  attachments?: StepAttachment[]
 }
 
 /** Record proveniente dall’HCM (in produzione: props dall’host o API). */

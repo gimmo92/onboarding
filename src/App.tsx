@@ -13,7 +13,7 @@ import { stepsForFlow } from './workflowTemplates'
 import WorkflowTab from './WorkflowTab'
 import DocumentsTab from './DocumentsTab'
 import UserViewTab from './UserViewTab'
-import './App.css'
+import EmployeeSimulationPanels from './EmployeeSimulationPanels'
 
 function newEmployeeId(): string {
   return crypto.randomUUID()
@@ -95,7 +95,13 @@ export default function App() {
   const [startRefDate, setStartRefDate] = useState('')
   const [previewHcm, setPreviewHcm] = useState<HcmEmployee | null>(null)
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
+  const [remindStep, setRemindStep] = useState<WorkflowStep | null>(null)
+  const [detailStep, setDetailStep] = useState<WorkflowStep | null>(null)
+  const [remindSubject, setRemindSubject] = useState('')
+  const [remindBody, setRemindBody] = useState('')
   const employeesPersistReady = useRef(false)
+  const remindDialogRef = useRef<HTMLDialogElement>(null)
+  const detailDialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
     let active = true
@@ -185,7 +191,29 @@ export default function App() {
 
   useEffect(() => {
     setOpenTaskId(null)
+    setRemindStep(null)
+    setDetailStep(null)
   }, [selectedId])
+
+  useEffect(() => {
+    const d = remindDialogRef.current
+    if (!d) return
+    if (remindStep) {
+      d.showModal()
+    } else {
+      d.close()
+    }
+  }, [remindStep])
+
+  useEffect(() => {
+    const d = detailDialogRef.current
+    if (!d) return
+    if (detailStep) {
+      d.showModal()
+    } else {
+      d.close()
+    }
+  }, [detailStep])
 
   function confirmStartWorkflow() {
     if (!startContext) return
@@ -223,6 +251,20 @@ export default function App() {
     )
   }
 
+  function downloadDemoAttachment(fileName: string, title: string) {
+    const body = `Copia dimostrativa generata in locale.\nRiferimento: ${title}\n`
+    const blob = new Blob([body], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName.toLowerCase().endsWith('.pdf')
+      ? fileName.replace(/\.pdf$/i, '') + '_demo.txt'
+      : `${fileName}_demo.txt`
+    a.rel = 'noopener'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   function confirmSignature() {
     if (!signContext || !acceptChecked) return
     const ts = new Date().toISOString()
@@ -230,6 +272,7 @@ export default function App() {
       status: 'completed',
       signedAt: ts,
       trainingProgress: undefined,
+      ...completionAttachments(signContext.step.kind, ts),
     })
     setSignContext(null)
   }
@@ -255,6 +298,20 @@ export default function App() {
     setSelectedId(null)
     setPreviewHcm(null)
     setOpenTaskId(null)
+    setRemindStep(null)
+    setDetailStep(null)
+  }
+
+  function openRemind(step: WorkflowStep) {
+    if (!selected) return
+    setRemindSubject(`Sollecito onboarding: ${step.title}`)
+    setRemindBody(
+      `Ciao ${selected.firstName},\n\n` +
+        `ti ricordiamo di completare l’attività «${step.title}» nel percorso di onboarding.\n\n` +
+        `Accedi al portale dipendente per aggiornare lo stato.\n\n` +
+        `Cordiali saluti,\nTeam HR`
+    )
+    setRemindStep(step)
   }
 
   const flowViewOpen =
@@ -463,7 +520,11 @@ export default function App() {
                         type="button"
                         className="btn primary"
                         onClick={() => {
-                          patchStep(selected.id, openTask.id, { status: 'completed' })
+                          const ts = new Date().toISOString()
+                          patchStep(selected.id, openTask.id, {
+                            status: 'completed',
+                            ...completionAttachments('task', ts),
+                          })
                           setOpenTaskId(null)
                         }}
                       >
@@ -591,13 +652,15 @@ export default function App() {
                                       ? 'Porta l’avanzamento al 100% per completare'
                                       : undefined
                                   }
-                                  onClick={() =>
+                                  onClick={() => {
+                                    const ts = new Date().toISOString()
                                     patchStep(selected.id, step.id, {
                                       status: 'completed',
                                       trainingProgress: 100,
-                                      trainingCompletedAt: new Date().toISOString(),
+                                      trainingCompletedAt: ts,
+                                      ...completionAttachments('training', ts),
                                     })
-                                  }
+                                  }}
                                 >
                                   Segna completato
                                 </button>
