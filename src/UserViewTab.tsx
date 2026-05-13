@@ -15,7 +15,7 @@ type UserFlowStep = {
 }
 
 const DEMO_CONTRACT_PDF =
-  'https://tryspark.co/wp-content/uploads/2026/05/test-contratto.pdf'
+  'https://tryspark.co/wp-content/uploads/2026/05/contratto-test-2.pdf'
 
 const EXAMPLE_WORKFLOW = {
   referenceDateLabel: '15 mag 2026',
@@ -412,7 +412,7 @@ export default function UserViewTab() {
         <article className="user-workflow-card">
           <header className="user-workflow-card-head">
             <div>
-              <h3 className="user-workflow-page-title">Le tue attività da completare</h3>
+              <h3 className="user-workflow-page-title">Le mie attività da completare</h3>
               <p className="user-workflow-meta">
                 <span>{EXAMPLE_WORKFLOW.role}</span>
                 <span aria-hidden>·</span>
@@ -445,7 +445,7 @@ export default function UserViewTab() {
             />
           ) : (
             <>
-              <ol className="admin-task-grid user-activity-grid" aria-label="Le tue attività">
+              <ol className="admin-task-grid user-activity-grid" aria-label="Le mie attività">
                 {steps.map((step, index) => {
                   return (
                     <li

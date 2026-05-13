@@ -80,7 +80,7 @@ export default function App() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [employeesReady, setEmployeesReady] = useState(false)
   const [storageError, setStorageError] = useState<string | null>(null)
-  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('da_completare')
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('vista_utente')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [signContext, setSignContext] = useState<{
     employeeId: string
@@ -357,7 +357,7 @@ export default function App() {
                   d="M10 2.75a4.25 4.25 0 1 0 0 8.5 4.25 4.25 0 0 0 0-8.5ZM4.5 16.25v-.5a5.5 5.5 0 0 1 11 0v.5H4.5Z"
                 />
               </svg>
-              <span>Le tue attività</span>
+              <span>Le mie attività</span>
             </span>
           </button>
           <button
@@ -423,7 +423,15 @@ export default function App() {
           <p className="document-upload-error">{storageError}</p>
         ) : null}
 
-        {workspaceTab === 'da_completare' ? (
+        {workspaceTab === 'vista_utente' ? (
+        <div
+          id="panel-vista-utente"
+          role="tabpanel"
+          aria-labelledby="tab-vista-utente"
+        >
+          <UserViewTab />
+        </div>
+        ) : workspaceTab === 'da_completare' ? (
         <div
           id="panel-da-completare"
           role="tabpanel"
@@ -736,21 +744,13 @@ export default function App() {
         >
           <WorkflowTab />
         </div>
-        ) : workspaceTab === 'documenti' ? (
+        ) : (
         <div
           id="panel-documenti"
           role="tabpanel"
           aria-labelledby="tab-documenti"
         >
           <DocumentsTab />
-        </div>
-        ) : (
-        <div
-          id="panel-vista-utente"
-          role="tabpanel"
-          aria-labelledby="tab-vista-utente"
-        >
-          <UserViewTab />
         </div>
         )}
       </div>
