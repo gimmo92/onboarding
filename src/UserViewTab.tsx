@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { WorkflowBlueprintStepKind } from './workflowBuilder'
 import { blueprintStepKindLabel } from './workflowBuilder'
 
@@ -39,7 +39,7 @@ const INITIAL_STEPS: UserFlowStep[] = [
     id: 'step-safety',
     kind: 'activity',
     title: 'Corso sicurezza sul lavoro',
-    description: 'Completa il modulo obbligatorio su rischi e procedure di emergenza.',
+    description: 'Completa il modulo obbligatorio su rischi, DPI e procedure di emergenza.',
     status: 'pending',
   },
   {
@@ -80,18 +80,262 @@ function stepKindBadgeClass(kind: WorkflowBlueprintStepKind): string {
   }
 }
 
-function canStartStepAtIndex(steps: UserFlowStep[], index: number): boolean {
-  const step = steps[index]
-  if (!step || step.status !== 'pending') return false
-  for (let i = 0; i < index; i++) {
-    if (steps[i].status !== 'completed') return false
+function escapeAttr(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
+}
+
+function openDemoDocument(title: string, intro: string) {
+  const html = `<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeAttr(title)}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.55; max-width: 42rem; margin: 2rem auto; padding: 0 1.25rem; color: #111; }
+    h1 { font-size: 1.35rem; margin-bottom: 1rem; }
+    p { color: #333; }
+    .muted { color: #666; font-size: 0.9rem; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <h1>${escapeAttr(title)}</h1>
+  <p>${escapeAttr(intro)}</p>
+  <p>Questo è un documento di esempio aperto in una nuova scheda. In produzione qui comparirebbe il PDF o il viewer integrato.</p>
+  <p class="muted">Finestra dimostrativa — puoi chiuderla e tornare all’app per firmare.</p>
+</body>
+</html>`
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank', 'noopener,noreferrer')
+  window.setTimeout(() => URL.revokeObjectURL(url), 120_000)
+}
+
+type SignatureCanvasProps = {
+  onChange: (hasInk: boolean) => void
+}
+
+function SignatureCanvas({ onChange }: SignatureCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const painting = useRef(false)
+  const hasInk = useRef(false)
+
+  const layoutCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const parent = canvas.parentElement
+    const w = Math.max(280, parent ? parent.clientWidth : 320)
+    const h = 160
+    const dpr = window.devicePixelRatio || 1
+    canvas.style.width = `${w}px`
+    canvas.style.height = `${h}px`
+    canvas.width = Math.round(w * dpr)
+    canvas.height = Math.round(h * dpr)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = '#1a1a2e'
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    hasInk.current = false
+    onChange(false)
+  }, [onChange])
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => layoutCanvas())
+    return () => cancelAnimationFrame(id)
+  }, [layoutCanvas])
+
+  function clientToLocal(e: React.MouseEvent | React.TouchEvent) {
+    const canvas = canvasRef.current!
+    const r = canvas.getBoundingClientRect()
+    let clientX: number
+    let clientY: number
+    if ('touches' in e && e.touches.length > 0) {
+      clientX = e.touches[0].clientX
+      clientY = e.touches[0].clientY
+    } else if ('changedTouches' in e && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX
+      clientY = e.changedTouches[0].clientY
+    } else {
+      clientX = (e as React.MouseEvent).clientX
+      clientY = (e as React.MouseEvent).clientY
+    }
+    return { x: clientX - r.left, y: clientY - r.top }
   }
-  if (steps.some((s, j) => j !== index && s.status === 'in_progress')) return false
-  return true
+
+  function startStroke(e: React.MouseEvent | React.TouchEvent) {
+    e.preventDefault()
+    painting.current = true
+    const ctx = canvasRef.current?.getContext('2d')
+    if (!ctx) return
+    const { x, y } = clientToLocal(e)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+  }
+
+  function drawStroke(e: React.MouseEvent | React.TouchEvent) {
+    if (!painting.current) return
+    e.preventDefault()
+    const ctx = canvasRef.current?.getContext('2d')
+    if (!ctx) return
+    const { x, y } = clientToLocal(e)
+    ctx.lineTo(x, y)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    if (!hasInk.current) {
+      hasInk.current = true
+      onChange(true)
+    }
+  }
+
+  function endStroke() {
+    painting.current = false
+  }
+
+  function clearPad() {
+    layoutCanvas()
+  }
+
+  return (
+    <div className="signature-pad-wrap">
+      <p className="signature-pad-label">Firma digitale</p>
+      <canvas
+        ref={canvasRef}
+        className="signature-pad"
+        aria-label="Area firma: traccia con mouse o dito"
+        onMouseDown={startStroke}
+        onMouseMove={drawStroke}
+        onMouseUp={endStroke}
+        onMouseLeave={endStroke}
+        onTouchStart={startStroke}
+        onTouchMove={drawStroke}
+        onTouchEnd={endStroke}
+      />
+      <div className="signature-pad-actions">
+        <button type="button" className="btn ghost btn-compact" onClick={clearPad}>
+          Cancella firma
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ActivityDetailPanel({
+  step,
+  onBack,
+  onComplete,
+}: {
+  step: UserFlowStep
+  onBack: () => void
+  onComplete: () => void
+}) {
+  const [uploadLabel, setUploadLabel] = useState('')
+  const [signOk, setSignOk] = useState(false)
+
+  const canComplete =
+    step.kind === 'activity'
+      ? true
+      : step.kind === 'document_upload'
+        ? uploadLabel.length > 0
+        : signOk
+
+  return (
+    <section className="user-activity-runner" aria-labelledby="user-activity-runner-title">
+      <div className="user-activity-runner-toolbar">
+        <button type="button" className="btn ghost" onClick={onBack}>
+          Torna indietro
+        </button>
+      </div>
+      <h3 id="user-activity-runner-title" className="user-activity-runner-title">
+        {step.title}
+      </h3>
+      <p className="user-activity-runner-desc">{step.description}</p>
+
+      {step.kind === 'document_sign' ? (
+        <div className="user-activity-runner-block">
+          <button
+            type="button"
+            className="btn primary"
+            onClick={() =>
+              openDemoDocument(step.title, step.description)
+            }
+          >
+            Apri documento in nuova scheda
+          </button>
+          <SignatureCanvas key={step.id} onChange={setSignOk} />
+          <p className="user-activity-runner-hint">
+            Apri il documento, leggilo nella nuova scheda, poi firma nell’area qui sopra.
+          </p>
+        </div>
+      ) : null}
+
+      {step.kind === 'document_upload' ? (
+        <div className="user-activity-runner-block">
+          <label className="upload-zone">
+            <span className="upload-zone-label">Trascina qui o scegli un file</span>
+            <span className="upload-zone-formats">PDF, JPG, PNG</span>
+            <input
+              type="file"
+              accept=".pdf,image/jpeg,image/png"
+              className="upload-zone-input"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                setUploadLabel(f ? f.name : '')
+              }}
+            />
+          </label>
+          {uploadLabel ? (
+            <p className="upload-zone-file" role="status">
+              File selezionato: <strong>{uploadLabel}</strong>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {step.kind === 'activity' ? (
+        <div className="user-activity-runner-block user-activity-runner-block--activity">
+          <p className="user-activity-runner-hint">
+            Completa l’attività secondo le istruzioni ricevute (LMS, modulo interno, ecc.).
+            Quando hai finito, conferma qui sotto.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="user-activity-runner-footer">
+        <button
+          type="button"
+          className="btn primary"
+          disabled={!canComplete}
+          title={
+            !canComplete
+              ? step.kind === 'document_upload'
+                ? 'Seleziona un file da caricare'
+                : step.kind === 'document_sign'
+                  ? 'Traccia la firma nell’area dedicata'
+                  : undefined
+              : undefined
+          }
+          onClick={onComplete}
+        >
+          {step.kind === 'document_upload'
+            ? 'Invia e completa'
+            : step.kind === 'document_sign'
+              ? 'Completa con firma'
+              : 'Segna completato'}
+        </button>
+      </div>
+    </section>
+  )
 }
 
 export default function UserViewTab() {
   const [steps, setSteps] = useState<UserFlowStep[]>(INITIAL_STEPS)
+  const [openActivityId, setOpenActivityId] = useState<string | null>(null)
 
   const progress = useMemo(() => {
     const total = steps.length
@@ -100,14 +344,24 @@ export default function UserViewTab() {
     return { done, total, pct }
   }, [steps])
 
+  const openStep = useMemo(
+    () => (openActivityId ? steps.find((s) => s.id === openActivityId) ?? null : null),
+    [openActivityId, steps]
+  )
+
   function startStep(stepId: string) {
     setSteps((current) => {
-      const index = current.findIndex((step) => step.id === stepId)
-      if (index < 0 || !canStartStepAtIndex(current, index)) return current
-      return current.map((step) =>
-        step.id === stepId ? { ...step, status: 'in_progress' as const } : step
+      const step = current.find((s) => s.id === stepId)
+      if (!step || step.status !== 'pending') return current
+      return current.map((s) =>
+        s.id === stepId ? { ...s, status: 'in_progress' as const } : s
       )
     })
+    setOpenActivityId(stepId)
+  }
+
+  function resumeStep(stepId: string) {
+    setOpenActivityId(stepId)
   }
 
   function completeStep(stepId: string) {
@@ -116,6 +370,11 @@ export default function UserViewTab() {
         step.id === stepId ? { ...step, status: 'completed' as const } : step
       )
     )
+    setOpenActivityId(null)
+  }
+
+  function handleBackFromRunner() {
+    setOpenActivityId(null)
   }
 
   return (
@@ -149,75 +408,78 @@ export default function UserViewTab() {
             </div>
           </header>
 
-          <p className="steps-intro user-activity-steps-intro">
-            Ogni passaggio si avvia dalla propria scheda, in ordine: termina quello in corso prima
-            di aprire il successivo.
-          </p>
+          {openStep && openStep.status !== 'completed' ? (
+            <ActivityDetailPanel
+              key={openStep.id}
+              step={openStep}
+              onBack={handleBackFromRunner}
+              onComplete={() => completeStep(openStep.id)}
+            />
+          ) : (
+            <>
+              <p className="steps-intro user-activity-steps-intro">
+                Puoi avviare e completare i passaggi in qualsiasi ordine, dalla scheda di
+                ciascuno.
+              </p>
 
-          <ol className="admin-task-grid user-activity-grid" aria-label="Le tue attività">
-            {steps.map((step, index) => {
-              const startable = canStartStepAtIndex(steps, index)
-              const startTitle = !startable
-                ? steps.some((s, j) => j !== index && s.status === 'in_progress')
-                  ? 'Termina prima l’attività in corso.'
-                  : 'Completa i passaggi precedenti in ordine.'
-                : undefined
-              return (
-                <li
-                  key={step.id}
-                  className={`admin-task-cell ${step.status}`}
-                  aria-current={step.status === 'in_progress' ? 'step' : undefined}
-                >
-                  <span className="admin-task-cell-marker" aria-hidden>
-                    {step.status === 'completed' ? (
-                      <svg viewBox="0 0 20 20">
-                        <path
-                          fill="currentColor"
-                          d="M7.75 13.19 4.53 9.97l1.06-1.06 2.16 2.16 6.16-6.16 1.06 1.06-7.22 7.22Z"
-                        />
-                      </svg>
-                    ) : (
-                      index + 1
-                    )}
-                  </span>
-                  <div className="admin-task-cell-body">
-                    <div className="admin-task-cell-head">
-                      <span className={`badge ${stepKindBadgeClass(step.kind)}`}>
-                        {blueprintStepKindLabel(step.kind)}
+              <ol className="admin-task-grid user-activity-grid" aria-label="Le tue attività">
+                {steps.map((step, index) => {
+                  return (
+                    <li
+                      key={step.id}
+                      className={`admin-task-cell ${step.status}`}
+                      aria-current={step.status === 'in_progress' ? 'step' : undefined}
+                    >
+                      <span className="admin-task-cell-marker" aria-hidden>
+                        {step.status === 'completed' ? (
+                          <svg viewBox="0 0 20 20">
+                            <path
+                              fill="currentColor"
+                              d="M7.75 13.19 4.53 9.97l1.06-1.06 2.16 2.16 6.16-6.16 1.06 1.06-7.22 7.22Z"
+                            />
+                          </svg>
+                        ) : (
+                          index + 1
+                        )}
                       </span>
-                      <strong>{step.title}</strong>
-                      <span className={`pill status-${step.status}`}>
-                        {stepStatusLabel(step.status)}
-                      </span>
-                    </div>
-                    <p className="admin-task-cell-desc">{step.description}</p>
-                    <div className="admin-task-cell-actions">
-                      {step.status === 'pending' && (
-                        <button
-                          type="button"
-                          className="btn primary"
-                          disabled={!startable}
-                          title={startTitle}
-                          onClick={() => startStep(step.id)}
-                        >
-                          Avvia attività
-                        </button>
-                      )}
-                      {step.status === 'in_progress' && (
-                        <button
-                          type="button"
-                          className="btn primary"
-                          onClick={() => completeStep(step.id)}
-                        >
-                          Segna completato
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              )
-            })}
-          </ol>
+                      <div className="admin-task-cell-body">
+                        <div className="admin-task-cell-head">
+                          <span className={`badge ${stepKindBadgeClass(step.kind)}`}>
+                            {blueprintStepKindLabel(step.kind)}
+                          </span>
+                          <strong>{step.title}</strong>
+                          <span className={`pill status-${step.status}`}>
+                            {stepStatusLabel(step.status)}
+                          </span>
+                        </div>
+                        <p className="admin-task-cell-desc">{step.description}</p>
+                        <div className="admin-task-cell-actions">
+                          {step.status === 'pending' && (
+                            <button
+                              type="button"
+                              className="btn primary"
+                              onClick={() => startStep(step.id)}
+                            >
+                              Avvia attività
+                            </button>
+                          )}
+                          {step.status === 'in_progress' && (
+                            <button
+                              type="button"
+                              className="btn primary"
+                              onClick={() => resumeStep(step.id)}
+                            >
+                              Continua
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
+            </>
+          )}
         </article>
       </section>
     </div>

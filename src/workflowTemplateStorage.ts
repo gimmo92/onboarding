@@ -10,6 +10,17 @@ function isWorkflowDefinition(value: unknown): value is WorkflowDefinition {
   }
 
   const workflow = value as WorkflowDefinition
+  if ('requireManagerSignature' in workflow && typeof workflow.requireManagerSignature !== 'boolean') {
+    return false
+  }
+  if (
+    'designatedSignerUserId' in workflow &&
+    workflow.designatedSignerUserId != null &&
+    typeof workflow.designatedSignerUserId !== 'string'
+  ) {
+    return false
+  }
+
   return (
     typeof workflow.id === 'string' &&
     typeof workflow.name === 'string' &&

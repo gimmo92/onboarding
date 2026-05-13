@@ -46,13 +46,15 @@ const SCOPE_LOOKUP = {
   utenti: MOCK_WORKFLOW_USERS,
 } as const
 
-type WizardStep = 1 | 2
+type WizardStep = 1 | 2 | 3
 
 type WizardDraft = {
   name: string
   scopeType: WorkflowScopeType
   targetIds: string[]
   steps: WorkflowBlueprintStep[]
+  requireManagerSignature: boolean
+  designatedSignerUserId: string
 }
 
 function createEmptyDraft(): WizardDraft {
@@ -61,6 +63,8 @@ function createEmptyDraft(): WizardDraft {
     scopeType: 'azienda',
     targetIds: [],
     steps: [],
+    requireManagerSignature: false,
+    designatedSignerUserId: '',
   }
 }
 
@@ -71,6 +75,8 @@ function createDraftFromWorkflow(workflow: WorkflowDefinition): WizardDraft {
     scopeType,
     targetIds: scopeType === 'azienda' ? [] : [...workflow.scope.targetIds],
     steps: workflow.steps.map((step) => ({ ...step })),
+    requireManagerSignature: workflow.requireManagerSignature ?? false,
+    designatedSignerUserId: workflow.designatedSignerUserId ?? '',
   }
 }
 
@@ -81,6 +87,18 @@ function buildScope(draft: WizardDraft): WorkflowScope {
 
 function scopeRequiresTargets(type: WorkflowScopeType): type is keyof typeof SCOPE_LOOKUP {
   return type !== 'azienda'
+}
+
+function signingSummary(workflow: WorkflowDefinition): string {
+  const parts: string[] = []
+  if (workflow.requireManagerSignature) {
+    parts.push('Firma manager')
+  }
+  if (workflow.designatedSignerUserId) {
+    const user = MOCK_WORKFLOW_USERS.find((u) => u.id === workflow.designatedSignerUserId)
+    parts.push(user ? `Firmatario: ${user.label}` : 'Firmatario designato')
+  }
+  return parts.length > 0 ? parts.join(' · ') : '—'
 }
 
 export default function WorkflowTab() {
@@ -256,6 +274,8 @@ export default function WorkflowTab() {
       name: draft.name.trim(),
       scope: buildScope(draft),
       steps: draft.steps,
+      requireManagerSignature: draft.requireManagerSignature,
+      designatedSignerUserId: draft.designatedSignerUserId.trim() || undefined,
     }
 
     if (editingWorkflowId) {
@@ -291,13 +311,17 @@ export default function WorkflowTab() {
         <section className="panel workflow-panel">
           <div className="workflow-wizard">
             <ol className="wizard-steps" aria-label="Passaggi del wizard">
-              <li className={wizardStep === 1 ? 'active' : 'done'}>
+              <li className={wizardStep === 1 ? 'active' : wizardStep > 1 ? 'done' : ''}>
                 <span className="wizard-step-index">1</span>
                 <span>Ambito</span>
               </li>
-              <li className={wizardStep === 2 ? 'active' : ''}>
+              <li className={wizardStep === 2 ? 'active' : wizardStep > 2 ? 'done' : ''}>
                 <span className="wizard-step-index">2</span>
                 <span>Step del processo</span>
+              </li>
+              <li className={wizardStep === 3 ? 'active' : ''}>
+                <span className="wizard-step-index">3</span>
+                <span>Opzioni firma</span>
               </li>
             </ol>
 
@@ -362,7 +386,7 @@ export default function WorkflowTab() {
                   </button>
                 </div>
               </div>
-            ) : (
+            ) : wizardStep === 2 ? (
               <div className="wizard-panel">
                 <div className="blueprint-builder">
                   <label className="wizard-field">
@@ -518,6 +542,66 @@ export default function WorkflowTab() {
                     type="button"
                     className="btn primary"
                     disabled={!canSaveWorkflow}
+                    onClick={() => setWizardStep(3)}
+                  >
+                    Avanti
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="wizard-panel">
+                <fieldset className="wizard-signing-fieldset">
+                  <legend>Firme aggiuntive</legend>
+                  <p className="wizard-signing-intro">
+                    Opzioni per richiedere firme oltre a quella del dipendente o del soggetto
+                    principale del flusso.
+                  </p>
+                  <label className="wizard-check">
+                    <input
+                      type="checkbox"
+                      checked={draft.requireManagerSignature}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          requireManagerSignature: event.target.checked,
+                        }))
+                      }
+                    />
+                    Richiedi anche la firma del manager
+                  </label>
+                  <label className="wizard-field">
+                    Utente che deve firmare (opzionale)
+                    <select
+                      value={draft.designatedSignerUserId}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          designatedSignerUserId: event.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">Nessuno</option>
+                      {MOCK_WORKFLOW_USERS.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </fieldset>
+
+                <div className="wizard-actions">
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => setWizardStep(2)}
+                  >
+                    Indietro
+                  </button>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    disabled={!canSaveWorkflow}
                     onClick={saveWorkflow}
                   >
                     {isEditingWorkflow ? 'Salva modifiche' : 'Salva workflow'}
@@ -555,6 +639,7 @@ export default function WorkflowTab() {
                       <th scope="col">Nome</th>
                       <th scope="col">Ambito</th>
                       <th scope="col">Step</th>
+                      <th scope="col">Firme</th>
                       <th scope="col">Creato</th>
                       <th scope="col" className="col-action">
                         <span className="sr-only">Azione</span>
@@ -577,6 +662,7 @@ export default function WorkflowTab() {
                           ) : null}
                         </td>
                         <td className="nowrap">{workflow.steps.length}</td>
+                        <td className="workflow-signing-cell">{signingSummary(workflow)}</td>
                         <td className="nowrap">
                           {new Date(workflow.createdAt).toLocaleDateString('it-IT', {
                             day: 'numeric',

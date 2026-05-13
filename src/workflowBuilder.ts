@@ -24,6 +24,10 @@ export type WorkflowDefinition = {
   scope: WorkflowScope
   steps: WorkflowBlueprintStep[]
   createdAt: string
+  /** Se true, il flusso richiede anche la firma del manager */
+  requireManagerSignature?: boolean
+  /** Utente designato che deve firmare (ID da elenco utenti workflow) */
+  designatedSignerUserId?: string
 }
 
 export type ScopeOption = {

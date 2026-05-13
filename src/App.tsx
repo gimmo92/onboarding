@@ -73,16 +73,6 @@ function progressOf(emp: Employee): { done: number; total: number } {
   return { done, total }
 }
 
-function canStartTaskAtIndex(tasks: WorkflowStep[], index: number): boolean {
-  const step = tasks[index]
-  if (!step || step.status !== 'pending') return false
-  for (let i = 0; i < index; i++) {
-    if (tasks[i].status !== 'completed') return false
-  }
-  if (tasks.some((s, j) => j !== index && s.status === 'in_progress')) return false
-  return true
-}
-
 type WorkspaceTab = 'da_completare' | 'workflow' | 'documenti' | 'vista_utente'
 
 export default function App() {
@@ -104,6 +94,7 @@ export default function App() {
   const [startFlow, setStartFlow] = useState<FlowType>('onboarding')
   const [startRefDate, setStartRefDate] = useState('')
   const [previewHcm, setPreviewHcm] = useState<HcmEmployee | null>(null)
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   const employeesPersistReady = useRef(false)
 
   useEffect(() => {
@@ -187,6 +178,15 @@ export default function App() {
   const trainingSteps = selected?.steps.filter((s) => s.kind === 'training') ?? []
   const taskSteps = selected?.steps.filter((s) => s.kind === 'task') ?? []
 
+  const openTask = useMemo(() => {
+    if (!openTaskId) return null
+    return taskSteps.find((s) => s.id === openTaskId) ?? null
+  }, [openTaskId, taskSteps])
+
+  useEffect(() => {
+    setOpenTaskId(null)
+  }, [selectedId])
+
   function confirmStartWorkflow() {
     if (!startContext) return
 
@@ -254,6 +254,7 @@ export default function App() {
   function closeFlowView() {
     setSelectedId(null)
     setPreviewHcm(null)
+    setOpenTaskId(null)
   }
 
   const flowViewOpen =
@@ -314,7 +315,7 @@ export default function App() {
               <svg className="main-tab-icon" viewBox="0 0 20 20" aria-hidden="true">
                 <path
                   fill="currentColor"
-                  d="M10 10.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Zm-5.5 6a5.5 5.5 0 0 1 11 0v.25H4.5v-.25Z"
+                  d="M7.75 13.19 4.53 9.97l1.06-1.06 2.16 2.16 6.16-6.16 1.06 1.06-7.22 7.22Z"
                 />
               </svg>
               <span>Da completare</span>
@@ -436,6 +437,43 @@ export default function App() {
                 </div>
               </div>
 
+              {openTask && openTask.status !== 'completed' ? (
+                <div className="activity-runner-section">
+                  <section
+                    className="user-activity-runner"
+                    aria-labelledby="task-activity-runner-title"
+                  >
+                    <div className="user-activity-runner-toolbar">
+                      <button type="button" className="btn ghost" onClick={() => setOpenTaskId(null)}>
+                        Torna indietro
+                      </button>
+                    </div>
+                    <h3 id="task-activity-runner-title" className="user-activity-runner-title">
+                      {openTask.title}
+                    </h3>
+                    <p className="user-activity-runner-desc">{openTask.description}</p>
+                    <div className="user-activity-runner-block user-activity-runner-block--activity">
+                      <p className="user-activity-runner-hint">
+                        Esegui l’attività (ticket IT, presenza welcome HR, checklist interna, ecc.).
+                        Quando è stata svolta, conferma il completamento qui sotto.
+                      </p>
+                    </div>
+                    <div className="user-activity-runner-footer">
+                      <button
+                        type="button"
+                        className="btn primary"
+                        onClick={() => {
+                          patchStep(selected.id, openTask.id, { status: 'completed' })
+                          setOpenTaskId(null)
+                        }}
+                      >
+                        Segna completata
+                      </button>
+                    </div>
+                  </section>
+                </div>
+              ) : (
+                <>
               <section className="steps-section">
                 <h3 className="steps-title">Firma documentale</h3>
                 <p className="steps-intro">
@@ -576,17 +614,10 @@ export default function App() {
               <section className="steps-section">
                 <h3 className="steps-title">Altre attività</h3>
                 <p className="steps-intro">
-                  Ogni attività si avvia dalla propria scheda, in ordine: termina quella in corso
-                  prima di iniziare la successiva.
+                  Puoi avviare e completare le attività in qualsiasi ordine, dalla scheda di ciascuna.
                 </p>
                 <ol className="admin-task-grid" aria-label="Attività operative">
                   {taskSteps.map((step, index) => {
-                    const startable = canStartTaskAtIndex(taskSteps, index)
-                    const startTitle = !startable
-                      ? taskSteps.some((s, j) => j !== index && s.status === 'in_progress')
-                        ? 'Termina prima l’attività in corso.'
-                        : 'Completa le attività precedenti in ordine.'
-                      : undefined
                     return (
                       <li
                         key={step.id}
@@ -619,11 +650,10 @@ export default function App() {
                               <button
                                 type="button"
                                 className="btn primary"
-                                disabled={!startable}
-                                title={startTitle}
-                                onClick={() =>
+                                onClick={() => {
                                   patchStep(selected.id, step.id, { status: 'in_progress' })
-                                }
+                                  setOpenTaskId(step.id)
+                                }}
                               >
                                 Avvia attività
                               </button>
@@ -632,11 +662,9 @@ export default function App() {
                               <button
                                 type="button"
                                 className="btn primary"
-                                onClick={() =>
-                                  patchStep(selected.id, step.id, { status: 'completed' })
-                                }
+                                onClick={() => setOpenTaskId(step.id)}
                               >
-                                Segna completata
+                                Continua
                               </button>
                             )}
                           </div>
@@ -646,6 +674,8 @@ export default function App() {
                   })}
                 </ol>
               </section>
+                </>
+              )}
             </>
           ) : previewHcm ? (
             <>
